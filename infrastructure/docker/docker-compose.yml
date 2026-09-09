@@ -26,5 +26,25 @@ services:
     depends_on:
       - db
 
+  client-api:
+    build:
+      context: ../../src/Web/Client.Api
+    container_name: diaspora-client-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "5220:8080"
+    depends_on:
+      - db
+
+  spa:
+    build:
+      context: ../../src/Web/Client.Api/spa
+    container_name: diaspora-spa
+    ports:
+      - "5173:8080"
+    depends_on:
+      - client-api
+
 volumes:
   postgres_data:
