@@ -1,0 +1,11 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+  <defs>
+    <linearGradient id="diaspora-logo-gradient" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#aa3bff" />
+      <stop offset="1" stop-color="#7c3aed" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#diaspora-logo-gradient)" />
+  <circle cx="26" cy="35" r="14" fill="#ffffff" opacity="0.92" />
+  <circle cx="41" cy="30" r="11" fill="#ffffff" opacity="0.55" />
+</svg>
