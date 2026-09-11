@@ -1,19 +1,29 @@
 <!--
 Sync Impact Report
-- Version change: (unratified template) → 1.0.0
-- Modified principles: n/a (initial ratification; prior file was an unfilled template scaffold)
-- Added sections:
-  - Core Principles: I. Learning-Oriented Engineering, II. Incremental Delivery,
-    III. Simplicity First, IV. Modular Architecture, V. Quality by Default,
-    VI. Specification-Driven Development, VII. Agent-Assisted Development,
-    VIII. Local-First and Reproducible, IX. Document Important Decisions
-  - Technology Approach
-  - Governance
-- Removed sections: none (generic template placeholders replaced)
+- Version change: 1.1.0 → 1.2.0
+- Modified principles:
+  - VI. Specification-Driven Development — specifications and plans MUST also be consistent with
+    the applicable per-technology conventions in .claude/rules/, not only with this constitution
+  - VII. Agent-Assisted Development — agents MUST work from .claude/rules/ in addition to
+    specifications and this constitution, explicitly including during Spec Kit's research,
+    planning, and implementation phases
+- Added sections: none
+- Removed sections: none
 - Deferred placeholders: none
 - Templates requiring follow-up: none checked in this run (constitution-only change per
-  command scope guard); re-validate plan/spec/tasks templates against these principles the
-  next time they are touched.
+  command scope guard); re-validate plan/spec/tasks templates against these principles the next
+  time they are touched.
+
+Sync Impact Report (previous amendment)
+- Version change: 1.0.0 → 1.1.0
+- Modified principles:
+  - IV. Modular Architecture — expanded to require that backend modules be designed and coded
+    following microservices architecture patterns/conventions (self-contained domain,
+    application, and persistence boundary per module) while remaining a single monolith
+    deployable, with the HTTP/API transport layer kept outside each module's boundary
+- Concrete conventions implementing that expanded principle — per-module project layout,
+  lightweight CQRS/Mediator usage, and Feature-Sliced Design for the SPA — were added to
+  AGENTS.md and .claude/rules/ in the same change.
 -->
 
 # Diaspora Constitution
@@ -56,8 +66,18 @@ a modular monolith by default; extracting a module into a separately deployable 
 permitted only when a specific, articulated scaling, ownership, or technical constraint justifies
 it, and MUST be recorded as a decision (Principle IX).
 
+Backend modules MUST be designed and coded following microservices architecture patterns and
+conventions — a self-contained domain, application, and persistence boundary per module, wired
+together only through explicit contracts — even though every module currently runs inside one
+monolith deployable. The HTTP/API transport layer (controllers, request/response contracts,
+routing) MUST be kept outside each module's own boundary, in the shared host, so that extracting
+a module later is a transport-wiring change, not a rewrite of the module's internals.
+
 **Rationale**: Clear boundaries make later evolution (e.g., toward event-driven or distributed
 designs) an option rather than a rewrite, without paying distributed-systems cost up front.
+Coding modules to microservice conventions from the start — while deferring the actual
+distributed deployment — lets this project practice that discipline continuously rather than
+retrofitting it under pressure once a split actually becomes necessary.
 
 ### V. Quality by Default
 Every change that alters behavior MUST include automated tests appropriate to its risk and
@@ -71,22 +91,33 @@ person over a long time and a core engineering skill this project exists to prac
 
 ### VI. Specification-Driven Development
 Every non-trivial feature MUST have a specification that serves as the source of truth for its
-intended behavior. Implementation MUST conform to its specification. Any deviation discovered
-during implementation MUST be reflected back into the specification before the work is
-considered complete.
+intended behavior. Specifications and plans MUST be consistent with the concrete, per-technology
+engineering conventions recorded under [.claude/rules/](../../.claude/rules/) for the
+technologies the feature touches, not only with this constitution's principles — research and
+design MUST take those conventions into account rather than rediscovering or re-litigating them
+per feature. Implementation MUST conform to its specification. Any deviation discovered during
+implementation MUST be reflected back into the specification before the work is considered
+complete.
 
 **Rationale**: Keeping specs and implementation aligned is what allows specs to be trusted as a
-working reference for both the human maintainer and any AI agents involved.
+working reference for both the human maintainer and any AI agents involved. Grounding specs and
+plans in the same concrete rules code must already follow keeps them realistic and prevents a
+spec from prescribing something the codebase's own conventions would reject at review time.
 
 ### VII. Agent-Assisted Development
 AI agents are first-class contributors to this project's workflow and MAY be used for
-exploration, implementation, testing, and review. Agents MUST work from specifications and this
-constitution rather than from ad hoc, undocumented instructions. Any significant architectural
-decision, module boundary change, or new external dependency proposed by an agent MUST be
-reviewed and explicitly approved by the human maintainer before it is merged.
+exploration, implementation, testing, and review. Agents MUST work from specifications, this
+constitution, and the applicable conventions under [.claude/rules/](../../.claude/rules/) rather
+than from ad hoc, undocumented instructions — including when using Spec Kit skills for a
+feature's research, clarification, planning, task breakdown, and implementation. Any significant
+architectural decision, module boundary change, or new external dependency proposed by an agent
+MUST be reviewed and explicitly approved by the human maintainer before it is merged.
 
 **Rationale**: Practicing agentic development is an explicit goal of this project, but
 architecture and dependency choices have long-term consequences that require human judgment.
+Spec Kit's phases are where an agent decides how a feature will be built; skipping the rules at
+that stage would let a spec or plan drift from established conventions before a human ever
+reviews the resulting code.
 
 ### VIII. Local-First and Reproducible
 The system MUST be runnable, testable, and debuggable entirely on a local machine, without a
@@ -126,9 +157,10 @@ Versioning follows semantic versioning: MAJOR for backward-incompatible governan
 removal/redefinition of a principle, MINOR for adding a principle or materially expanding
 guidance, PATCH for clarifications and wording fixes that do not change intent.
 
-Specs, plans, and non-trivial changes SHOULD be checked against these principles before merge.
+Specs, plans, and non-trivial changes SHOULD be checked against these principles and the
+applicable conventions under [.claude/rules/](../../.claude/rules/) before merge.
 Repeated or persistent violation of a principle MUST be resolved either by bringing the work
 into compliance or by amending this constitution to reflect a deliberate, documented change in
 practice — not by silent drift.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-09-05
+**Version**: 1.2.0 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-09-11

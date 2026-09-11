@@ -12,10 +12,16 @@ Conventions for the `spa` frontend (React + TypeScript on Vite).
 - No `any`. Give props, state, and API response shapes explicit `interface`/`type` definitions.
   Prefer inferring types from a single source of truth (e.g. a shared response type) over
   redefining the same shape in multiple places.
-- Organize by feature as the app grows beyond the current starter files: a feature owns its
-  components, hooks, and types together, instead of splitting everything into global
-  `components/`, `hooks/`, `types/` folders. Keep the starter layout until a second feature
-  actually needs this structure — don't restructure speculatively.
+- Organize using **Feature-Sliced Design (FSD)** as the app grows beyond the current starter
+  files, instead of splitting everything into global `components/`, `hooks/`, `types/` folders.
+  Layers, outermost to innermost: `app` (providers, global setup, routing) → `pages` (route-level
+  compositions) → `widgets` (composite, reusable UI blocks) → `features` (a single user action,
+  e.g. "register user") → `entities` (a business object and its own UI, e.g. a user card) →
+  `shared` (generic UI kit, API client, utilities — no business logic). A module/slice may only
+  import from its own layer or a layer strictly below it, never sideways or upward (e.g. a
+  `feature` may import `entities`/`shared` but not another `feature`, and nothing may import from
+  `app`). Keep the starter layout until real features exist to justify the layers — don't
+  scaffold empty layer folders speculatively.
 - Centralize outbound HTTP calls behind a small typed API client module (wrapping the existing
   `axios` dependency) instead of calling `axios.get`/`.post` directly from components.
 - Keep components focused on rendering; move non-trivial logic (data fetching, derived state,
