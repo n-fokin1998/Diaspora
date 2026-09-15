@@ -74,20 +74,18 @@ boundaries or service splits that aren't already there — add a new module (wit
 
 ```
 src/
-  Web/
-    Diaspora.sln                  # .NET solution
-    Client.Api/                    # ASP.NET Core Web API host: transport layer only
-      Controllers/                   # thin controllers per module, dispatch via MediatR
-      spa/                            # React + TypeScript frontend (Vite), Feature-Sliced Design
-    BuildingBlocks/
-      Diaspora.Core/                 # small, stable cross-cutting kernel shared by modules
-    Contracts/
-      Diaspora.Contracts/            # DTOs/events shared across module (later, service) boundaries
-    Modules/
-      Identity/                      # reference example — mirror this layout for new modules
-        Identity.Domain/               # entities, value objects — no framework dependencies
-        Identity.Application/          # use cases (CQRS commands/queries via MediatR), abstractions
-        Identity.Infrastructure/        # EF Core DbContext, implements Application's abstractions
+  Diaspora.sln                  # .NET solution
+  Client.Api/                    # ASP.NET Core Web API host: transport layer only
+    Controllers/                   # thin controllers per module, dispatch via MediatR
+    spa/                            # React + TypeScript frontend (Vite), Feature-Sliced Design
+  Diaspora.Core/                 # small, stable cross-cutting kernel shared by modules
+  Diaspora.Contracts/            # DTOs/events shared across module (later, service) boundaries
+  Diaspora.Tests/                # xUnit tests (see .claude/rules/testing.md)
+  Modules/
+    Identity/                      # reference example — mirror this layout for new modules
+      Identity.Domain/               # entities, value objects — no framework dependencies
+      Identity.Application/          # use cases (CQRS commands/queries via MediatR), abstractions
+      Identity.Infrastructure/        # EF Core DbContext, implements Application's abstractions
 infrastructure/
   docker/
     docker-compose.yml         # local Postgres + pgAdmin
@@ -105,13 +103,13 @@ noted otherwise.
 
 **Backend (.NET):**
 ```bash
-dotnet build src/Web/Diaspora.sln
-dotnet run --project src/Web/Client.Api
-dotnet format src/Web/Diaspora.sln
+dotnet build src/Diaspora.sln
+dotnet run --project src/Client.Api
+dotnet format src/Diaspora.sln
+dotnet test src/Diaspora.sln
 ```
-There is no automated test project yet.
 
-**Frontend (from `src/Web/Client.Api/spa`):**
+**Frontend (from `src/Client.Api/spa`):**
 ```bash
 npm install
 npm run dev

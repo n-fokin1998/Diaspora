@@ -5,7 +5,7 @@ conventions**: every module is coded as if it were its own service — self-cont
 application, and persistence, wired in only through explicit contracts — even though it runs
 in-process inside one deployable today. See the
 [constitution](../../.specify/memory/constitution.md) for the *why* (Principle IV, Modular
-Architecture); this file defines the *how*. `src/Web/Modules/Identity` is the concrete reference
+Architecture); this file defines the *how*. `src/Modules/Identity` is the concrete reference
 example for everything below — when in doubt, match its layout.
 
 ## Modules
@@ -79,11 +79,11 @@ example for everything below — when in doubt, match its layout.
 - A module's `Domain` and `Application` code must not reference infrastructure libraries
   directly (EF Core, Npgsql, Kafka client, `HttpClient`). Depend on an interface defined in
   `Application`/`Domain` and implement it in `Infrastructure` (dependency inversion).
-- `src/Web/Contracts/Diaspora.Contracts` holds DTOs/events genuinely shared *across* module (and,
+- `src/Diaspora.Contracts` holds DTOs/events genuinely shared *across* module (and,
   later, service) boundaries — the same kind of versioned contract [kafka.md](kafka.md) already
   describes for integration events. Keep it small: most cross-module communication should go
   through a module's own `Application`-layer interface, not through a shared contracts project.
-- `src/Web/BuildingBlocks/Diaspora.Core` is the one acceptable shared/common project: a small,
+- `src/Diaspora.Core` is the one acceptable shared/common project: a small,
   stable, cross-cutting kernel (e.g. a `Result<T>` type, shared MediatR pipeline behaviors) that
   many modules' `Domain`/`Application` layers may depend on. It is not a dumping ground — if it
   starts accumulating unrelated helpers, split them back into the modules that need them.

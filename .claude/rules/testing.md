@@ -1,10 +1,12 @@
 # Testing Rules
 
-No test project exists yet (see [AGENTS.md](../../AGENTS.md)). These rules apply from the first
-test project onward.
-
-- **.NET**: use xUnit. Name test projects `<ProjectUnderTest>.Tests` and mirror the
-  `src` structure so a test's location maps clearly to what it covers.
+- **.NET**: use xUnit. Today, all backend tests live in the single `src/Diaspora.Tests` project
+  (mirror the `src` structure with folders inside it, e.g. `Modules/Identity/...`, so a test's
+  location still maps clearly to what it covers) — this is a Simplicity First starting point
+  while there isn't much to test yet. Split a module's tests out into its own
+  `<ProjectUnderTest>.Tests` project only once that module's test surface grows enough to justify
+  the extra project (e.g. it needs its own heavy test-only dependencies, or the single project
+  becomes unwieldy).
 - **Frontend**: use Vitest with React Testing Library (native fit for the existing Vite setup).
 - Favor a small pyramid: many fast unit tests for `Domain`/`Application` logic with no database
   or network involved; fewer integration tests that exercise a module's `Infrastructure` (EF
