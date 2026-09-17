@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+namespace Identity.Application.Common.Abstractions;
 
-namespace Identity.Application.Common.Abstractions
+public interface IPasswordHasher
 {
-    public interface IPasswordHasher
-    {
-    }
+    HashedPassword Hash(string password);
+
+    bool Verify(string password, byte[] hash, byte[] salt, int iterations);
 }
+
+public sealed record HashedPassword(byte[] Hash, byte[] Salt, int Iterations);

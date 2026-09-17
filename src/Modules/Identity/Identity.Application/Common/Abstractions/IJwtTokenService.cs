@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Identity.Domain.Users;
 
-namespace Identity.Application.Common.Abstractions
+namespace Identity.Application.Common.Abstractions;
+
+public interface IJwtTokenService
 {
-    public interface IJwtTokenService
-    {
-    }
+    IssuedToken IssueAccessToken(User user);
 }
+
+public sealed record IssuedToken(string AccessToken, DateTime ExpiresAtUtc);

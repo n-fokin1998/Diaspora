@@ -1,13 +1,16 @@
-﻿using Identity.Application.Common.Abstractions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Identity.Domain.Users;
+using Microsoft.EntityFrameworkCore;
 
-namespace Identity.Infrastructure.Persistence
+namespace Identity.Infrastructure.Persistence;
+
+internal class IdentityDbContext(DbContextOptions<IdentityDbContext> options)
+    : DbContext(options)
 {
-    internal class IdentityDbContext : IIdentityDbContext
+    public DbSet<User> Users => Set<User>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(IdentityDbContext).Assembly);
+        base.OnModelCreating(modelBuilder);
     }
 }

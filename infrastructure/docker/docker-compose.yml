@@ -28,7 +28,7 @@ services:
 
   client-api:
     build:
-      context: ../../src/Web/Client.Api
+      context: ../../src/Client.Api
     container_name: diaspora-client-api
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -39,7 +39,7 @@ services:
 
   spa:
     build:
-      context: ../../src/Web/Client.Api/spa
+      context: ../../src/Client.Api/spa
     container_name: diaspora-spa
     ports:
       - "5173:8080"
