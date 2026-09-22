@@ -1,4 +1,4 @@
-namespace Identity.Infrastructure.Authentication;
+namespace Diaspora.Identity.Infrastructure.Authentication;
 
 public sealed class JwtOptions
 {

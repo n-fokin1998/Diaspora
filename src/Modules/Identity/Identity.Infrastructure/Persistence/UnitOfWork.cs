@@ -1,6 +1,6 @@
-﻿using Identity.Application.Common.Abstractions;
+﻿using Diaspora.Identity.Application.Common.Abstractions;
 
-namespace Identity.Infrastructure.Persistence
+namespace Diaspora.Identity.Infrastructure.Persistence
 {
     internal class UnitOfWork(IdentityDbContext dbContext) : IUnitOfWork
     {

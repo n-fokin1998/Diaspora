@@ -1,5 +1,5 @@
-using Identity.Application;
-using Identity.Infrastructure;
+using Diaspora.Identity.Application;
+using Diaspora.Identity.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;

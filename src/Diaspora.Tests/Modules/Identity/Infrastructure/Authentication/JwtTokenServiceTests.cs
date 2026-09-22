@@ -1,12 +1,12 @@
+using Diaspora.Identity.Domain.Users;
+using Diaspora.Identity.Infrastructure.Authentication;
 using System.IdentityModel.Tokens.Jwt;
-using Identity.Domain.Users;
-using Identity.Infrastructure.Authentication;
 
 namespace Diaspora.Tests.Modules.Identity.Infrastructure.Authentication;
 
 public class JwtTokenServiceTests
 {
-    private static readonly JwtOptions Options = new()
+    private readonly JwtOptions Options = new()
     {
         Key = "super-secret-test-signing-key-used-only-in-tests-1234567890",
         Issuer = "Diaspora.Tests",

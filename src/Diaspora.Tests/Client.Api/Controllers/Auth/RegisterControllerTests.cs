@@ -8,17 +8,6 @@ public class RegisterControllerTests(AuthApiFactory factory) : IClassFixture<Aut
 {
     private readonly HttpClient _client = factory.CreateClient();
 
-    private static object ValidPayload(string email) => new
-    {
-        email,
-        password = "Str0ngPass1",
-        confirmPassword = "Str0ngPass1",
-        firstName = "Jane",
-        lastName = "Doe",
-        dateOfBirth = "1998-04-12",
-        location = "Berlin, Germany",
-    };
-
     [Fact]
     public async Task Register_WithValidPayload_Returns201WithAccessToken()
     {
@@ -60,4 +49,15 @@ public class RegisterControllerTests(AuthApiFactory factory) : IClassFixture<Aut
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(body.GetProperty("errors").TryGetProperty("email", out _));
     }
+
+    private object ValidPayload(string email) => new
+    {
+        email,
+        password = "Str0ngPass1",
+        confirmPassword = "Str0ngPass1",
+        firstName = "Jane",
+        lastName = "Doe",
+        dateOfBirth = "1998-04-12",
+        location = "Berlin, Germany",
+    };
 }

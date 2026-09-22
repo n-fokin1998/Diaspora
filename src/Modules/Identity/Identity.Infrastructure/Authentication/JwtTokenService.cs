@@ -1,11 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Identity.Application.Common.Abstractions;
-using Identity.Domain.Users;
+using Diaspora.Identity.Application.Common.Abstractions;
+using Diaspora.Identity.Domain.Users;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Identity.Infrastructure.Authentication;
+namespace Diaspora.Identity.Infrastructure.Authentication;
 
 internal class JwtTokenService(JwtOptions options) : IJwtTokenService
 {

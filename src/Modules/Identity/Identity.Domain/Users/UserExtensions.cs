@@ -1,4 +1,4 @@
-﻿namespace Identity.Domain.Users
+﻿namespace Diaspora.Identity.Domain.Users
 {
     public static class UserExtensions
     {

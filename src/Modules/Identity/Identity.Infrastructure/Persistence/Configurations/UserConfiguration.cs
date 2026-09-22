@@ -1,8 +1,8 @@
-using Identity.Domain.Users;
+using Diaspora.Identity.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Identity.Infrastructure.Persistence.Configurations;
+namespace Diaspora.Identity.Infrastructure.Persistence.Configurations;
 
 public class UserConfiguration : IEntityTypeConfiguration<User>
 {

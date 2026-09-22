@@ -1,11 +1,11 @@
-using Client.Api.Controllers.Auth.ViewModels;
-using Identity.Application.Authentication.Login;
+using Diaspora.Client.Api.Controllers.Auth.ViewModels;
+using Diaspora.Identity.Application.Authentication.Login;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
-namespace Client.Api.Controllers.Auth
+namespace Diaspora.Client.Api.Controllers.Auth
 {
     [Route("api/auth")]
     [ApiController]

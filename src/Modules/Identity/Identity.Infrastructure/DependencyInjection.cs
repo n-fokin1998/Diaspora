@@ -1,12 +1,12 @@
-using Identity.Application.Common.Abstractions;
-using Identity.Infrastructure.Authentication;
-using Identity.Infrastructure.Persistence;
-using Identity.Infrastructure.Persistence.Repositories;
+using Diaspora.Identity.Application.Common.Abstractions;
+using Diaspora.Identity.Infrastructure.Authentication;
+using Diaspora.Identity.Infrastructure.Persistence;
+using Diaspora.Identity.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Identity.Infrastructure
+namespace Diaspora.Identity.Infrastructure
 {
     public static class DependencyInjection
     {

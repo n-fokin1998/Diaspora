@@ -1,8 +1,8 @@
-﻿using Identity.Application.Common.Abstractions;
-using Identity.Domain.Users;
+﻿using Diaspora.Identity.Application.Common.Abstractions;
+using Diaspora.Identity.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 
-namespace Identity.Infrastructure.Persistence.Repositories
+namespace Diaspora.Identity.Infrastructure.Persistence.Repositories
 {
     internal class UserRepository(IdentityDbContext dbContext) : IUserRepository
     {

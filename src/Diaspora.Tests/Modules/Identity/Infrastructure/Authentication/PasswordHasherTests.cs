@@ -1,4 +1,4 @@
-using Identity.Infrastructure.Authentication;
+using Diaspora.Identity.Infrastructure.Authentication;
 
 namespace Diaspora.Tests.Modules.Identity.Infrastructure.Authentication;
 

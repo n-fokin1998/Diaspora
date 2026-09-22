@@ -1,6 +1,6 @@
 using MediatR;
 
-namespace Identity.Application.Authentication.Register;
+namespace Diaspora.Identity.Application.Authentication.Register;
 
 public sealed record RegisterCommand(
     string Email,

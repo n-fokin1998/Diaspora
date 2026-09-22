@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
-using Identity.Application.Common.Abstractions;
+using Diaspora.Identity.Application.Common.Abstractions;
 
-namespace Identity.Infrastructure.Authentication;
+namespace Diaspora.Identity.Infrastructure.Authentication;
 
 internal class PasswordHasher : IPasswordHasher
 {

@@ -1,6 +1,6 @@
-using Identity.Application.Authentication.Login;
-using Identity.Application.Common.Abstractions;
-using Identity.Domain.Users;
+using Diaspora.Identity.Application.Authentication.Login;
+using Diaspora.Identity.Application.Common.Abstractions;
+using Diaspora.Identity.Domain.Users;
 using Moq;
 
 namespace Diaspora.Tests.Modules.Identity.Application.Authentication.Login;
@@ -79,16 +79,5 @@ public class LoginCommandHandlerTests
 
         Assert.False(result.Succeeded);
         Assert.Empty(result.FieldErrors);
-    }
-
-    [Theory]
-    [InlineData("", "somepassword")]
-    [InlineData(RegisteredEmail, "")]
-    public async Task Handle_WithMissingField_ReturnsValidationError(string email, string password)
-    {
-        var result = await _sut.Handle(new LoginCommand(email, password), CancellationToken.None);
-
-        Assert.False(result.Succeeded);
-        Assert.NotEmpty(result.FieldErrors);
     }
 }

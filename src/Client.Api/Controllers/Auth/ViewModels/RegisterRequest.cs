@@ -1,4 +1,4 @@
-namespace Client.Api.Controllers.Auth.ViewModels;
+namespace Diaspora.Client.Api.Controllers.Auth.ViewModels;
 
 public sealed record RegisterRequest(
     string Email,

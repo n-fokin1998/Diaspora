@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>6ff6027c-56b7-40b1-9d8a-e480acb0ba51</UserSecretsId>
+    <AssemblyName>$(MSBuildProjectName)</AssemblyName>
+    <RootNamespace>Diaspora.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

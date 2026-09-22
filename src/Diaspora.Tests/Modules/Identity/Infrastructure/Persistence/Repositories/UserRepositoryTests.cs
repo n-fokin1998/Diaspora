@@ -1,6 +1,6 @@
-using Identity.Domain.Users;
-using Identity.Infrastructure.Persistence;
-using Identity.Infrastructure.Persistence.Repositories;
+using Diaspora.Identity.Domain.Users;
+using Diaspora.Identity.Infrastructure.Persistence;
+using Diaspora.Identity.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -18,20 +18,6 @@ public class UserRepositoryTests : IAsyncLifetime
     }
 
     public async Task DisposeAsync() => await _container.DisposeAsync();
-
-    private IdentityDbContext CreateContext()
-    {
-        var options = new DbContextOptionsBuilder<IdentityDbContext>()
-            .UseNpgsql(_container.GetConnectionString())
-            .Options;
-
-        return new IdentityDbContext(options);
-    }
-
-    private static User CreateUser(string email) => User.Register(
-        email, [1, 2, 3], [4, 5, 6], 600_000,
-        "Jane", "Doe", new DateOnly(1998, 4, 12), "Berlin",
-        DateTime.UtcNow);
 
     [Fact]
     public async Task AddUser_ThenSaveChanges_PersistsAndRoundTrips()
@@ -91,4 +77,18 @@ public class UserRepositoryTests : IAsyncLifetime
         await Assert.ThrowsAsync<DbUpdateException>(
             () => new UnitOfWork(duplicateContext).SaveChangesAsync());
     }
+
+    private IdentityDbContext CreateContext()
+    {
+        var options = new DbContextOptionsBuilder<IdentityDbContext>()
+            .UseNpgsql(_container.GetConnectionString())
+            .Options;
+
+        return new IdentityDbContext(options);
+    }
+
+    private User CreateUser(string email) => User.Register(
+        email, [1, 2, 3], [4, 5, 6], 600_000,
+        "Jane", "Doe", new DateOnly(1998, 4, 12), "Berlin",
+        DateTime.UtcNow);
 }

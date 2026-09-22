@@ -1,4 +1,4 @@
-namespace Identity.Application.Common.Abstractions;
+namespace Diaspora.Identity.Application.Common.Abstractions;
 
 public interface IPasswordHasher
 {

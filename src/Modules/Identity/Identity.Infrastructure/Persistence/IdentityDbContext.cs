@@ -1,7 +1,7 @@
-using Identity.Domain.Users;
+using Diaspora.Identity.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 
-namespace Identity.Infrastructure.Persistence;
+namespace Diaspora.Identity.Infrastructure.Persistence;
 
 internal class IdentityDbContext(DbContextOptions<IdentityDbContext> options)
     : DbContext(options)

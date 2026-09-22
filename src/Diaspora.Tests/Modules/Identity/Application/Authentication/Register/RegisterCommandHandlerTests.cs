@@ -1,6 +1,6 @@
-using Identity.Application.Authentication.Register;
-using Identity.Application.Common.Abstractions;
-using Identity.Domain.Users;
+using Diaspora.Identity.Application.Authentication.Register;
+using Diaspora.Identity.Application.Common.Abstractions;
+using Diaspora.Identity.Domain.Users;
 using Moq;
 
 namespace Diaspora.Tests.Modules.Identity.Application.Authentication.Register;
@@ -36,15 +36,6 @@ public class RegisterCommandHandlerTests
             _userRepository.Object, _unitOfWork.Object, _passwordHasher.Object, _jwtTokenService.Object);
     }
 
-    private static RegisterCommand ValidCommand(string email = "jane@example.com") => new(
-        Email: email,
-        Password: "Str0ngPass1",
-        ConfirmPassword: "Str0ngPass1",
-        FirstName: "Jane",
-        LastName: "Doe",
-        DateOfBirth: new DateOnly(1998, 4, 12),
-        Location: "Berlin, Germany");
-
     [Fact]
     public async Task Handle_WithValidInput_CreatesUserAndReturnsAccessToken()
     {
@@ -69,86 +60,12 @@ public class RegisterCommandHandlerTests
         Assert.Single(_users);
     }
 
-    [Fact]
-    public async Task Handle_WithMismatchedConfirmPassword_ReturnsFieldError()
-    {
-        var command = ValidCommand() with { ConfirmPassword = "Different1" };
-
-        var result = await _sut.Handle(command, CancellationToken.None);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("confirmPassword", result.FieldErrors.Keys);
-    }
-
-    [Theory]
-    [InlineData("short1")]
-    [InlineData("nodigitshere")]
-    [InlineData("12345678")]
-    public async Task Handle_WithWeakPassword_ReturnsFieldError(string weakPassword)
-    {
-        var command = ValidCommand() with { Password = weakPassword, ConfirmPassword = weakPassword };
-
-        var result = await _sut.Handle(command, CancellationToken.None);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("password", result.FieldErrors.Keys);
-    }
-
-    [Fact]
-    public async Task Handle_WithMalformedEmail_ReturnsFieldError()
-    {
-        var command = ValidCommand() with { Email = "not-an-email" };
-
-        var result = await _sut.Handle(command, CancellationToken.None);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("email", result.FieldErrors.Keys);
-    }
-
-    [Theory]
-    [InlineData("", "Doe", "firstName")]
-    [InlineData("Jane", "", "lastName")]
-    public async Task Handle_WithEmptyName_ReturnsFieldError(string firstName, string lastName, string expectedField)
-    {
-        var command = ValidCommand() with { FirstName = firstName, LastName = lastName };
-
-        var result = await _sut.Handle(command, CancellationToken.None);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains(expectedField, result.FieldErrors.Keys);
-    }
-
-    [Fact]
-    public async Task Handle_WithEmptyLocation_ReturnsFieldError()
-    {
-        var command = ValidCommand() with { Location = "   " };
-
-        var result = await _sut.Handle(command, CancellationToken.None);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("location", result.FieldErrors.Keys);
-    }
-
-    [Fact]
-    public async Task Handle_WithFutureDateOfBirth_ReturnsFieldError()
-    {
-        var command = ValidCommand() with { DateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1) };
-
-        var result = await _sut.Handle(command, CancellationToken.None);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("dateOfBirth", result.FieldErrors.Keys);
-    }
-
-    [Fact]
-    public async Task Handle_WithUnderMinimumAge_ReturnsFieldError()
-    {
-        var tooYoungDateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-User.MinAgeYears + 1);
-        var command = ValidCommand() with { DateOfBirth = tooYoungDateOfBirth };
-
-        var result = await _sut.Handle(command, CancellationToken.None);
-
-        Assert.False(result.Succeeded);
-        Assert.Contains("dateOfBirth", result.FieldErrors.Keys);
-    }
+    private RegisterCommand ValidCommand(string email = "jane@example.com") => new(
+        Email: email,
+        Password: "Str0ngPass1",
+        ConfirmPassword: "Str0ngPass1",
+        FirstName: "Jane",
+        LastName: "Doe",
+        DateOfBirth: new DateOnly(1998, 4, 12),
+        Location: "Berlin, Germany");
 }

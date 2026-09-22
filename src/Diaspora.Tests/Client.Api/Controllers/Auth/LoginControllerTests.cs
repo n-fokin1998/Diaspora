@@ -8,25 +8,6 @@ public class LoginControllerTests(AuthApiFactory factory) : IClassFixture<AuthAp
 {
     private readonly HttpClient _client = factory.CreateClient();
 
-    private static object RegisterPayload(string email) => new
-    {
-        email,
-        password = "Str0ngPass1",
-        confirmPassword = "Str0ngPass1",
-        firstName = "Jane",
-        lastName = "Doe",
-        dateOfBirth = "1998-04-12",
-        location = "Berlin, Germany",
-    };
-
-    private async Task<string> RegisterAndReturnEmailAsync()
-    {
-        var email = $"{Guid.NewGuid()}@example.com";
-        var response = await _client.PostAsJsonAsync("/api/auth/register", RegisterPayload(email));
-        response.EnsureSuccessStatusCode();
-        return email;
-    }
-
     [Fact]
     public async Task Login_WithCorrectCredentials_Returns200WithAccessToken()
     {
@@ -68,4 +49,23 @@ public class LoginControllerTests(AuthApiFactory factory) : IClassFixture<AuthAp
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    private async Task<string> RegisterAndReturnEmailAsync()
+    {
+        var email = $"{Guid.NewGuid()}@example.com";
+        var response = await _client.PostAsJsonAsync("/api/auth/register", RegisterPayload(email));
+        response.EnsureSuccessStatusCode();
+        return email;
+    }
+
+    private object RegisterPayload(string email) => new
+    {
+        email,
+        password = "Str0ngPass1",
+        confirmPassword = "Str0ngPass1",
+        firstName = "Jane",
+        lastName = "Doe",
+        dateOfBirth = "1998-04-12",
+        location = "Berlin, Germany",
+    };
 }

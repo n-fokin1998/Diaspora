@@ -1,6 +1,8 @@
-namespace Identity.Application.Authentication.Register;
+using Diaspora.Identity.Application.Common.Abstractions;
 
-public sealed class RegisterResult
+namespace Diaspora.Identity.Application.Authentication.Register;
+
+public sealed class RegisterResult : IValidationFailureResult<RegisterResult>
 {
     private RegisterResult()
     {

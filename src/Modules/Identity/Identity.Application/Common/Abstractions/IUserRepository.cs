@@ -1,6 +1,6 @@
-﻿using Identity.Domain.Users;
+﻿using Diaspora.Identity.Domain.Users;
 
-namespace Identity.Application.Common.Abstractions
+namespace Diaspora.Identity.Application.Common.Abstractions
 {
     public interface IUserRepository
     {

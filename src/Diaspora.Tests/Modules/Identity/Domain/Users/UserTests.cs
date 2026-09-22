@@ -1,4 +1,4 @@
-using Identity.Domain.Users;
+using Diaspora.Identity.Domain.Users;
 
 namespace Diaspora.Tests.Modules.Identity.Domain.Users;
 

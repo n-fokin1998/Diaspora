@@ -1,6 +1,8 @@
-namespace Identity.Application.Authentication.Login;
+using Diaspora.Identity.Application.Common.Abstractions;
 
-public sealed class LoginResult
+namespace Diaspora.Identity.Application.Authentication.Login;
+
+public sealed class LoginResult : IValidationFailureResult<LoginResult>
 {
     private LoginResult()
     {

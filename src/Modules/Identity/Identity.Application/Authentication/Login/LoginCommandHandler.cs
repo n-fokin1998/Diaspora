@@ -1,8 +1,8 @@
-using Identity.Application.Common.Abstractions;
-using Identity.Domain.Users;
+using Diaspora.Identity.Application.Common.Abstractions;
+using Diaspora.Identity.Domain.Users;
 using MediatR;
 
-namespace Identity.Application.Authentication.Login;
+namespace Diaspora.Identity.Application.Authentication.Login;
 
 public class LoginCommandHandler(
     IUserRepository userRepository,
@@ -17,20 +17,6 @@ public class LoginCommandHandler(
 
     public async Task<LoginResult> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
-        {
-            var errors = new Dictionary<string, string[]>();
-            if (string.IsNullOrWhiteSpace(request.Email))
-            {
-                errors["email"] = ["Email is required."];
-            }
-            if (string.IsNullOrWhiteSpace(request.Password))
-            {
-                errors["password"] = ["Password is required."];
-            }
-            return LoginResult.ValidationFailed(errors);
-        }
-
         var normalizedEmail = request.Email.NormalizeEmail();
         var user = await userRepository.FindByNormalizedEmailAsync(normalizedEmail, cancellationToken);
 
