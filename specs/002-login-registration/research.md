@@ -37,15 +37,20 @@ is also where the learning value (Principle I) actually is.
 ## 2. Password hashing and salting
 
 **Decision**: PBKDF2-HMAC-SHA256 via the BCL (`System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2`),
-with a per-user random 128-bit salt (`RandomNumberGenerator`), 210,000 iterations (OWASP's 2023
-minimum recommendation for PBKDF2-HMAC-SHA256), and a 256-bit derived key. Iteration count is
-stored alongside the hash/salt so it can be raised later without invalidating existing hashes.
-Verification compares in constant time (`CryptographicOperations.FixedTimeEquals`).
+with a per-user random 128-bit salt (`RandomNumberGenerator`), 600,000 iterations (above OWASP's
+2023 minimum recommendation of 210,000 for PBKDF2-HMAC-SHA256), and a 256-bit derived key.
+Iteration count is stored alongside the hash/salt so it can be raised later without invalidating
+existing hashes. Verification compares in constant time
+(`CryptographicOperations.FixedTimeEquals`). To avoid a timing side-channel that would reveal
+whether an email is registered, a login attempt against an unknown email still runs a dummy
+PBKDF2 derivation (same 600,000 iterations) before returning the generic invalid-credentials
+response.
 
 **Rationale**: PBKDF2 is available in the BCL with no external package, is OWASP-endorsed, and
 directly demonstrates the "hashing + per-user salt + work factor" concepts the user asked to see
 applied. Storing the iteration count makes the scheme upgradable (a standard practice) without
-extra infrastructure.
+extra infrastructure. 600,000 iterations was chosen over the 210,000 OWASP minimum for extra
+margin, given PBKDF2-HMAC-SHA256's relatively low per-iteration cost.
 
 **Alternatives considered**:
 - Argon2id (currently OWASP's *first* recommendation) — rejected for now: no BCL implementation
@@ -56,9 +61,12 @@ extra infrastructure.
 
 ## 3. JWT issuance and validation
 
-**Decision**: Symmetric HMAC-SHA256 (HS256) signing with a secret read from configuration
-(user-secrets locally, environment/configuration in any other environment — never committed).
-Claims: `sub` (user id), `email`, `jti` (unique token id, for future revocation support), `iat`,
+**Decision**: Symmetric HMAC-SHA256 (HS256) signing with a secret read from configuration. In any
+real environment (staging, production) the secret MUST come from user-secrets/environment
+configuration and MUST NOT be committed. For local development only, a non-production placeholder
+secret is committed in `appsettings.Development.json` so the app runs out-of-the-box after a
+fresh clone with no manual setup step — this is an accepted convention for a placeholder value
+with no real-world sensitivity, not an exception for a real secret. Claims: `sub` (user id), `email`, `jti` (unique token id, for future revocation support), `iat`,
 `nbf`, `exp`. Access token lifetime: 60 minutes. Validated via
 `Microsoft.AspNetCore.Authentication.JwtBearer`, with issuer/audience/lifetime validation enabled
 and a small clock-skew allowance (30 seconds) instead of the library's 5-minute default.

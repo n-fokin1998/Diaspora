@@ -49,10 +49,13 @@ responsiveness (spec.md SC-001/SC-002: registration under 2 minutes end-to-end, 
 seconds for a user with correct credentials) — this feature does not introduce a
 high-throughput/concurrency requirement.
 
-**Constraints**: JWT signing secret and any environment-specific config MUST come from
-configuration/user-secrets, never source (matches the existing connection-string convention in
-[efcore-postgresql.md](../../.claude/rules/efcore-postgresql.md)); passwords are never stored,
-logged, or transmitted in plain form beyond the initial HTTPS request body (spec.md SC-004).
+**Constraints**: The JWT signing secret and any environment-specific config used outside local
+development MUST come from configuration/user-secrets, never source (matches the existing
+connection-string convention in [efcore-postgresql.md](../../.claude/rules/efcore-postgresql.md));
+a non-production placeholder JWT secret is the one accepted exception, committed in
+`appsettings.Development.json` for a zero-setup local `dotnet run` (research.md #3). Passwords are
+never stored, logged, or transmitted in plain form beyond the initial HTTPS request body (spec.md
+SC-004).
 
 **Scale/Scope**: Two new API endpoints, one new database table, three new/changed SPA screens
 (Register, Login, Home) plus routing — a single small vertical slice within the existing
@@ -148,20 +151,28 @@ src/
         │       └── User.cs                 # existing empty stub → the entity in data-model.md
         ├── Identity.Application/
         │   ├── Authentication/
-        │   │   ├── Register/               # existing empty stubs → RegisterCommand/Handler/Result
-        │   │   └── Login/                  # new: LoginCommand/Handler/Result
-        │   └── Common/Abstractions/
-        │       ├── IIdentityDbContext.cs    # existing stub → Users DbSet
-        │       ├── IPasswordHasher.cs        # existing stub → Hash/Verify contract
-        │       └── IJwtTokenService.cs       # existing stub → issue-token contract
+        │   │   ├── Register/               # RegisterCommand/Handler/Result + RegisterCommandValidator
+        │   │   └── Login/                  # LoginCommand/Handler/Result + LoginCommandValidator
+        │   └── Common/
+        │       ├── Abstractions/
+        │       │   ├── IUserRepository.cs    # EmailExistsAsync/FindByNormalizedEmailAsync/AddUser
+        │       │   ├── IUnitOfWork.cs         # SaveChangesAsync
+        │       │   ├── IPasswordHasher.cs     # Hash/Verify contract
+        │       │   ├── IJwtTokenService.cs    # issue-token contract
+        │       │   └── IValidator<T>.cs       # command validator contract
+        │       └── Behaviors/
+        │           └── ValidationBehavior.cs  # MediatR pipeline behavior running IValidator<T>
         └── Identity.Infrastructure/
             ├── Authentication/
-            │   ├── PasswordHasher.cs         # existing stub → PBKDF2 implementation (research.md #2)
-            │   └── JwtTokenService.cs        # existing stub → JWT issuance (research.md #3)
+            │   ├── PasswordHasher.cs         # PBKDF2 implementation (research.md #2)
+            │   └── JwtTokenService.cs        # JWT issuance (research.md #3)
             └── Persistence/
-                ├── IdentityDbContext.cs      # existing stub → Users DbSet
-                ├── Configurations/           # new: UserConfiguration (IEntityTypeConfiguration<User>)
-                └── Migrations/               # new: initial Users table migration
+                ├── IdentityDbContext.cs      # Users DbSet, consumed only inside Infrastructure
+                ├── Repositories/
+                │   └── UserRepository.cs      # implements IUserRepository
+                ├── UnitOfWork.cs               # implements IUnitOfWork
+                ├── Configurations/           # UserConfiguration (IEntityTypeConfiguration<User>)
+                └── Migrations/               # initial Users table migration
 
 tests/ (src/Diaspora.Tests, mirroring the structure above per testing.md)
 ├── Modules/Identity/Domain/Users/

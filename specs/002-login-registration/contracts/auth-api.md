@@ -33,7 +33,7 @@ navigate to the Home screen").
 | Status | When | Body |
 |---|---|---|
 | `201 Created` | Account created | `AuthResponse` (below) |
-| `400 Bad Request` | One or more fields fail validation (FR-002, FR-004, FR-005, FR-006, FR-007) | `ValidationProblemDetails` with an entry per invalid field, e.g. `{"errors": {"email": ["Email is not a valid address."]}}` |
+| `400 Bad Request` | One or more fields fail validation (FR-002, FR-004, FR-005, FR-006, FR-007) | `ValidationProblemDetails` with an entry per invalid field, e.g. `{"errors": {"email": ["Enter a valid email address."]}}` |
 | `409 Conflict` | Email already registered (FR-003) | `ProblemDetails` with a message indicating the email is already in use |
 
 ## `POST /api/auth/login`
@@ -54,8 +54,13 @@ Authenticates an existing account (FR-010).
 | Status | When | Body |
 |---|---|---|
 | `200 OK` | Credentials correct | `AuthResponse` (below) |
-| `400 Bad Request` | Email/password missing or malformed | `ValidationProblemDetails` |
-| `401 Unauthorized` | Email/password combination incorrect (FR-011) | `ProblemDetails` with a single generic "invalid email or password" message — never identifies which field was wrong |
+| `400 Bad Request` | Email or password missing/blank (FR-013) | `ValidationProblemDetails` |
+| `401 Unauthorized` | Email/password combination incorrect — including a malformed or unregistered email (FR-011) | `ProblemDetails` with a single generic "invalid email or password" message — never identifies which field was wrong, and never distinguishes a malformed email from a wrong password |
+
+Login does not validate email format: only presence (non-empty) is checked at `400`. A
+non-empty-but-malformed email, or one with no matching account, both fall through to the `401`
+generic-invalid-credentials path — this avoids ever revealing whether an email is registered or
+merely mistyped.
 
 ## `AuthResponse` (shared response shape)
 

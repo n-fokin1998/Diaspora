@@ -8,6 +8,13 @@
 
 **Input**: User description: "Implement login and registration functionality. During register, user should be able to specify email, password, first name, last name, DOB, Location. Do not use any third-party libs for now. Email should be just stored in DB without integration with SMTP. Location also should be just string. Apply regular validation for these fields, that is used in general for such data according to best practices. Apply styling to follow modern web design trends, but not too complex."
 
+## Clarifications
+
+### Session 2026-09-22
+
+- Q: For first/last name, should leading/trailing whitespace be rejected as invalid, or trimmed and accepted? → A: Trimmed and accepted — not treated as invalid.
+- Q: Should a malformed (but non-empty) login email produce a field-specific 400 validation error, or the same generic invalid-credentials response as a wrong password or unknown email? → A: The same generic invalid-credentials response; login does not perform email-format validation before checking credentials.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Register for a new account (Priority: P1)
@@ -98,6 +105,10 @@ birth) one at a time and confirming a specific, field-relevant error is shown ea
   whitespace?
 - What happens when someone repeatedly submits incorrect login credentials for the same account?
 - What happens when someone tries to log in with an email that has no registered account?
+- What happens when someone submits a malformed (not validly formatted) email address on the login
+  form? (Treated the same as any other incorrect credential — the generic invalid-credentials
+  message, not a format-specific error, since login does not validate email format before checking
+  credentials.)
 - What happens when an already-authenticated user opens the registration or login page again?
 
 ## Requirements *(mandatory)*
@@ -114,8 +125,9 @@ birth) one at a time and confirming a specific, field-relevant error is shown ea
 - **FR-004**: System MUST validate that the password meets a minimum strength requirement (at
   least a minimum length and a mix of character types) before accepting registration, and MUST
   reject registration when the password and its confirmation do not match.
-- **FR-005**: System MUST validate that first name and last name are non-empty, contain no leading
-  or trailing whitespace, and do not exceed a reasonable maximum length.
+- **FR-005**: System MUST validate that first name and last name are non-empty (after trimming
+  surrounding whitespace) and do not exceed a reasonable maximum length; leading and trailing
+  whitespace is trimmed rather than treated as an invalid value.
 - **FR-006**: System MUST validate that the date of birth is a real calendar date, is not in the
   future, and reflects an age at or above a minimum allowed age.
 - **FR-007**: System MUST accept location as free-form text without validating it against any
@@ -130,12 +142,17 @@ birth) one at a time and confirming a specific, field-relevant error is shown ea
   email and password.
 - **FR-011**: System MUST reject a login attempt when the email/password combination is incorrect,
   using a single generic message that does not reveal whether the email or the password was the
-  incorrect part.
+  incorrect part. This generic rejection applies uniformly to a missing, malformed, or unregistered
+  email and to a correct email with the wrong password — login does not perform email-format
+  validation separately from the credential check, so a malformed email is never distinguished from
+  a wrong password in the response.
 - **FR-012**: System MUST establish an authenticated session for a user upon successful login, and
   MUST allow the user to explicitly log out, ending that session.
 - **FR-013**: System MUST present specific, field-level validation error messages on the
   registration and login forms whenever submitted input fails validation, rather than a single
-  generic failure message.
+  generic failure message. On the login form this applies to a missing email or password; a
+  malformed email is not treated as a separate validation failure and instead falls under FR-011's
+  generic invalid-credentials response.
 - **FR-014**: Registration and login MUST be implemented entirely with the project's own logic,
   without depending on any third-party authentication, identity, or user-management library or
   hosted service.

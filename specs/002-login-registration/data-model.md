@@ -29,10 +29,12 @@ validation that produces the field-specific messages FR-013 requires):
 - `PasswordHash`/`PasswordSalt` are never empty once set; the entity has no way to hold a
   plain-text password (there is no such property).
 
-**Construction**: a single static factory (e.g. `User.Register(email, normalizedEmail,
-passwordHash, passwordSalt, iterations, firstName, lastName, dateOfBirth, location, createdAtUtc)`)
-so an invalid `User` can never exist mid-construction; the Application-layer command handler
-computes the hash/salt (via the password-hashing abstraction) and passes the result in.
+**Construction**: a single static factory, `User.Register(email, passwordHash, passwordSalt,
+passwordHashIterations, firstName, lastName, dateOfBirth, location, createdAtUtc)`, so an invalid
+`User` can never exist mid-construction; the Application-layer command handler computes the
+hash/salt (via the password-hashing abstraction) and passes the result in. `NormalizedEmail` is not
+a caller-supplied argument — the factory computes it internally from `email` (trimmed,
+upper-invariant) rather than trusting the caller to have normalized it consistently.
 
 **Relationships**: none yet — this feature introduces no other entity that references `User`.
 
@@ -64,7 +66,9 @@ No `Sessions` table exists. "Ending a session" (FR-012) is the client discarding
 | Date of birth | Real calendar date, not in the future, age ≥ 13 | FR-006, spec Assumptions |
 | Location | Non-empty after trim, bounded max length, free text | FR-007 |
 
-Validation is implemented as plain, project-owned checks in the `Application` layer's command
-handlers (research.md #1 — no third-party validation library), returning a field-name → message
-map that the API layer turns into a `ValidationProblemDetails` response (see
-[contracts/auth-api.md](contracts/auth-api.md)).
+Validation is implemented as plain, project-owned checks (research.md #1 — no third-party
+validation library) in a dedicated `IValidator<TRequest>` per command (`RegisterCommandValidator`,
+`LoginCommandValidator`), run by a shared MediatR pipeline behavior (`ValidationBehavior`) before
+the command handler executes — the handlers themselves contain no validation logic. A failed
+validation short-circuits the pipeline with a field-name → message map that the API layer turns
+into a `ValidationProblemDetails` response (see [contracts/auth-api.md](contracts/auth-api.md)).
