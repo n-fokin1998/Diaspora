@@ -1,0 +1,55 @@
+using Diaspora.Identity.Application.Common.Abstractions;
+using Diaspora.Identity.Domain.RefreshTokens;
+using Diaspora.Identity.Domain.Users;
+using MediatR;
+
+namespace Diaspora.Identity.Application.Authentication.Login;
+
+public class LoginCommandHandler(
+    IUserRepository userRepository,
+    IRefreshTokenRepository refreshTokenRepository,
+    IUnitOfWork unitOfWork,
+    IPasswordHasher passwordHasher,
+    IJwtTokenService jwtTokenService,
+    IRefreshTokenService refreshTokenService) : IRequestHandler<LoginCommand, LoginResult>
+{
+    // Used to verify a password against when no account exists, so a response doesn't leak
+    // via timing whether the email is registered (FR-011: never reveal which part was wrong).
+    private static readonly byte[] DummyHash = new byte[32];
+    private static readonly byte[] DummySalt = new byte[16];
+    private const int DummyIterations = 600_000;
+
+    public async Task<LoginResult> Handle(LoginCommand request, CancellationToken cancellationToken)
+    {
+        var normalizedEmail = request.Email.NormalizeEmail();
+        var user = await userRepository.FindByNormalizedEmailAsync(normalizedEmail, cancellationToken);
+
+        if (user is null)
+        {
+            passwordHasher.Verify(request.Password, DummyHash, DummySalt, DummyIterations);
+            return LoginResult.InvalidCredentials();
+        }
+
+        var passwordValid = passwordHasher.Verify(request.Password, user.PasswordHash, user.PasswordSalt, user.PasswordHashIterations);
+        if (!passwordValid)
+        {
+            return LoginResult.InvalidCredentials();
+        }
+
+        var issuedRefreshToken = refreshTokenService.Issue();
+        refreshTokenRepository.AddRefreshToken(
+            RefreshToken.Issue(user.Id, issuedRefreshToken.TokenHash, DateTime.UtcNow, issuedRefreshToken.ExpiresAtUtc));
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var issuedToken = jwtTokenService.IssueAccessToken(user);
+        return LoginResult.Success(
+            user.Id,
+            user.Email,
+            user.FirstName,
+            user.LastName,
+            issuedToken.AccessToken,
+            issuedToken.ExpiresAtUtc,
+            issuedRefreshToken.RawToken,
+            issuedRefreshToken.ExpiresAtUtc);
+    }
+}

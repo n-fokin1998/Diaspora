@@ -26,5 +26,10 @@ projects).
   exception message) rather than letting invalid state propagate.
 - Use exceptions for exceptional conditions, not for expected control flow (e.g. "not found" in a
   lookup is a return value/`Result`, not necessarily an exception).
+- Within a class, put private helper methods **after** the public members that use them, not
+  before — a reader should meet the public surface first and descend into helpers on demand.
+  Don't mark a private helper `static` by default; only do so when it's specifically needed (e.g.
+  it must be usable from a static context, or it's genuinely stateless and reused across
+  instances) — an instance method that happens not to touch instance state does not need it.
 - Code must be clean under `dotnet format` (see [AGENTS.md](../../AGENTS.md) for the command)
   before a change is considered done.

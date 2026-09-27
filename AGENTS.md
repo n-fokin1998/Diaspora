@@ -16,48 +16,93 @@ engineering conventions.
 
 **Currently in use:**
 - .NET 9 / ASP.NET Core Web API (backend)
-- React + TypeScript, built with Vite (frontend)
+- MediatR (in-process Mediator, used for lightweight CQRS-style command/query dispatch, plus a
+  shared `ValidationBehavior` pipeline behavior — see [architecture.md](.claude/rules/architecture.md))
+- Entity Framework Core + Npgsql, one `DbContext` and one PostgreSQL schema per module, behind a
+  Repository + Unit-of-Work abstraction (data access — see
+  [efcore-postgresql.md](.claude/rules/efcore-postgresql.md))
+- JWT bearer authentication, with a refresh-token flow (`Identity` module)
+- React + TypeScript, built with Vite, following Feature-Sliced Design (frontend — see
+  [react-typescript.md](.claude/rules/react-typescript.md))
 - PostgreSQL, via Docker Compose (database)
 - Docker / Docker Compose (local infrastructure)
+- xUnit + Moq + Testcontainers (backend tests), Vitest + React Testing Library (frontend tests —
+  see [testing.md](.claude/rules/testing.md))
 
 **Planned / intended direction (not yet present in code):**
-- Entity Framework Core (data access)
 - Kafka (async messaging between modules/services)
 - Kubernetes (deployment)
 - OpenTelemetry (observability)
 
-Do not assume EF Core, Kafka, Kubernetes, or OpenTelemetry are wired up until you have checked
-the repository — introduce them only when a concrete task requires it, per the constitution's
+Do not assume Kafka, Kubernetes, or OpenTelemetry are wired up until you have checked the
+repository — introduce them only when a concrete task requires it, per the constitution's
 Simplicity First principle.
 
 ## Architecture
 
-The intended architecture is a **modular monolith**: a single deployable backend organized into
-modules with clear boundaries and explicit interfaces between them, with a separate frontend
-application. Splitting a module out into its own service is deferred until a specific,
-articulated need justifies it (see the constitution's Modular Architecture principle).
+The intended architecture is a **modular monolith built to microservices conventions**: a single
+deployable backend, but each business module is organized and coded as if it were its own
+service — a self-contained `Domain`/`Application`/`Infrastructure` boundary with its own
+persistence, wired to the rest of the system only through explicit contracts — so that splitting
+a module out into an actual separate service later is a transport/deployment change, not an
+internal rewrite. Splitting a module out is still deferred until a specific, articulated need
+justifies it (see the constitution's Modular Architecture principle). The frontend is a separate,
+single Vite/React application.
 
-Today, the backend is a single ASP.NET Core Web API project with no internal module boundaries
-yet defined, and the frontend is a single Vite/React app. Do not invent module boundaries or
-service splits that aren't already there — add structure only as real features require it.
+The one thing that stays *outside* every module's boundary is the HTTP/API transport layer:
+controllers, request/response DTOs, and routing live in the `Client.Api` host project, not inside
+a module's own projects. A module never talks HTTP to itself — `Client.Api` depends on a module's
+`Application` (and, only for startup DI wiring, its `Infrastructure`) project and dispatches into
+it, today via direct calls into that project's public types, in-process.
+
+Business logic within a module's `Application` layer uses a **lightweight CQRS** style: explicit
+commands (writes) and queries (reads) as the module's use cases, dispatched via the **Mediator
+pattern** (the `MediatR` package). This is a logic-level split for organizing use cases, not a
+data-level one — a module still has exactly one database/`DbContext` (see
+[efcore-postgresql.md](.claude/rules/efcore-postgresql.md)), not separate read/write stores. Use
+MediatR where it earns its keep — decoupling a controller from a module's use case, or enabling a
+shared pipeline behavior (validation, logging) — not as a Command/Handler pair wrapped around
+every trivial operation; a plain method call is fine when the extra indirection buys nothing (see
+the constitution's Simplicity First principle).
+
+The `Modules/Identity` module (see Repository Structure below) is the concrete reference example
+for this layout — mirror its project split, `DependencyInjection.cs` wiring, and vertical-slice
+folder structure (e.g. `Authentication/Register/`) when adding a new module. Concrete conventions
+live in [architecture.md](.claude/rules/architecture.md).
+
+The SPA follows **Feature-Sliced Design (FSD)** as it grows past its current starter layout — see
+[react-typescript.md](.claude/rules/react-typescript.md) for the concrete layer conventions.
+
+Today, `Identity` is the only module with this three-project split; do not invent further module
+boundaries or service splits that aren't already there — add a new module (with the same
+`Domain`/`Application`/`Infrastructure` split) only as real features require it.
 
 ## Repository Structure
 
 ```
 src/
-  Web/
-    Diaspora.sln              # .NET solution
-    Client.Api/                # ASP.NET Core Web API project
-      spa/                      # React + TypeScript frontend (Vite)
+  Diaspora.sln                  # .NET solution
+  Client.Api/                    # ASP.NET Core Web API host: transport layer only
+    Controllers/                   # thin controllers per module, dispatch via MediatR
+    spa/                            # React + TypeScript frontend (Vite), Feature-Sliced Design
+  Diaspora.Core/                 # small, stable cross-cutting kernel shared by modules
+  Diaspora.Contracts/            # DTOs/events shared across module (later, service) boundaries
+  Diaspora.Tests/                # xUnit tests spanning Client.Api / multiple modules (see .claude/rules/testing.md)
+  Modules/
+    Identity/                      # reference example — mirror this layout for new modules
+      Identity.Domain/               # entities, value objects — no framework dependencies
+      Identity.Application/          # use cases (CQRS commands/queries via MediatR), abstractions
+      Identity.Infrastructure/        # EF Core DbContext (schema "identity"), repositories, Unit of Work
+      Identity.Tests/                 # xUnit tests for this module's three layers (see .claude/rules/testing.md)
 infrastructure/
   docker/
     docker-compose.yml         # local Postgres + pgAdmin
 .specify/                    # Spec Kit: constitution, specs, plans, tasks
 ```
 
-This structure is intentionally minimal. Do not create additional top-level folders (e.g. for
-future services, shared libraries, or Kubernetes manifests) speculatively — add them when a
-task actually needs them.
+This structure is intentionally minimal beyond the module layout above. Do not create additional
+top-level folders (e.g. for future services or Kubernetes manifests) speculatively — add them
+when a task actually needs them.
 
 ## Development Commands
 
@@ -66,13 +111,13 @@ noted otherwise.
 
 **Backend (.NET):**
 ```bash
-dotnet build src/Web/Diaspora.sln
-dotnet run --project src/Web/Client.Api
-dotnet format src/Web/Diaspora.sln
+dotnet build src/Diaspora.sln
+dotnet run --project src/Client.Api
+dotnet format src/Diaspora.sln
+dotnet test src/Diaspora.sln
 ```
-There is no automated test project yet.
 
-**Frontend (from `src/Web/Client.Api/spa`):**
+**Frontend (from `src/Client.Api/spa`):**
 ```bash
 npm install
 npm run dev
