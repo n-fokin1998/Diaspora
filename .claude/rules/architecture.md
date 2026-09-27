@@ -20,11 +20,16 @@ example for everything below — when in doubt, match its layout.
     all beyond the BCL; this project must not depend on ASP.NET Core, EF Core, or any other
     framework.
   - **`<Module>.Application`** — use cases orchestrating business logic (see CQRS/Mediator
-    below), plus the abstractions (interfaces) that `Infrastructure` implements. References only
-    `Domain` and abstraction packages (e.g. `Microsoft.Extensions.DependencyInjection.Abstractions`),
-    never a concrete infrastructure package.
-  - **`<Module>.Infrastructure`** — the module's own EF Core `DbContext`/configurations, and the
-    concrete implementations of `Application`'s abstractions (e.g. a password hasher, a token
+    below), plus the abstractions (interfaces) that `Infrastructure` implements — e.g. one
+    `I<Entity>Repository` per aggregate, a single module-wide `IUnitOfWork`, and any other
+    external-facing capability the module needs (a password hasher, a token service). References
+    only `Domain` and abstraction packages (e.g.
+    `Microsoft.Extensions.DependencyInjection.Abstractions`), never a concrete infrastructure
+    package. See [efcore-postgresql.md](efcore-postgresql.md) for the concrete
+    Repository/Unit-of-Work convention.
+  - **`<Module>.Infrastructure`** — the module's own EF Core `DbContext`/configurations
+    (see [efcore-postgresql.md](efcore-postgresql.md)), and the concrete implementations of
+    `Application`'s abstractions (repositories, `IUnitOfWork`, a password hasher, a token
     service). References `Application` and `Domain`.
   - **Transport (API)** — controllers, request/response DTOs, and routing for the module's
     endpoints live *outside* the module, in `Client.Api` (see "Transport stays outside the
@@ -70,6 +75,18 @@ example for everything below — when in doubt, match its layout.
 - Commands and queries are simple data carriers (no business logic); the handler holds the
   orchestration logic and depends on `Application`-defined abstractions, never on
   `Infrastructure` concrete types.
+- **Validation runs as a shared MediatR pipeline behavior, not inline in each handler.** A
+  command/query defines its own `IValidator<TRequest>` (an `Application`-defined abstraction,
+  e.g. `RegisterCommandValidator : IValidator<RegisterCommand>`) that returns field-level errors
+  as `IReadOnlyDictionary<string, string[]>`. The module's single `ValidationBehavior<TRequest,
+  TResponse>` (registered once via `services.AddTransient(typeof(IPipelineBehavior<,>),
+  typeof(ValidationBehavior<,>))`) runs every matching validator before the handler and short
+  -circuits with a validation-failure result when any validator reports errors. This requires the
+  request's result type to implement the module's `IValidationFailureResult<TSelf>` marker
+  interface (a static-abstract factory method, e.g. `RegisterResult.ValidationFailed(errors)`) so
+  the behavior can construct a typed failure without the handler ever running. Add a validator
+  only for use cases that need field-level validation; a query with nothing to validate does not
+  need one.
 
 ## Boundaries
 

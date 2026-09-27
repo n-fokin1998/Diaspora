@@ -16,19 +16,26 @@ engineering conventions.
 
 **Currently in use:**
 - .NET 9 / ASP.NET Core Web API (backend)
-- MediatR (in-process Mediator, used for lightweight CQRS-style command/query dispatch)
-- React + TypeScript, built with Vite (frontend)
+- MediatR (in-process Mediator, used for lightweight CQRS-style command/query dispatch, plus a
+  shared `ValidationBehavior` pipeline behavior — see [architecture.md](.claude/rules/architecture.md))
+- Entity Framework Core + Npgsql, one `DbContext` and one PostgreSQL schema per module, behind a
+  Repository + Unit-of-Work abstraction (data access — see
+  [efcore-postgresql.md](.claude/rules/efcore-postgresql.md))
+- JWT bearer authentication, with a refresh-token flow (`Identity` module)
+- React + TypeScript, built with Vite, following Feature-Sliced Design (frontend — see
+  [react-typescript.md](.claude/rules/react-typescript.md))
 - PostgreSQL, via Docker Compose (database)
 - Docker / Docker Compose (local infrastructure)
+- xUnit + Moq + Testcontainers (backend tests), Vitest + React Testing Library (frontend tests —
+  see [testing.md](.claude/rules/testing.md))
 
 **Planned / intended direction (not yet present in code):**
-- Entity Framework Core (data access)
 - Kafka (async messaging between modules/services)
 - Kubernetes (deployment)
 - OpenTelemetry (observability)
 
-Do not assume EF Core, Kafka, Kubernetes, or OpenTelemetry are wired up until you have checked
-the repository — introduce them only when a concrete task requires it, per the constitution's
+Do not assume Kafka, Kubernetes, or OpenTelemetry are wired up until you have checked the
+repository — introduce them only when a concrete task requires it, per the constitution's
 Simplicity First principle.
 
 ## Architecture
@@ -80,12 +87,13 @@ src/
     spa/                            # React + TypeScript frontend (Vite), Feature-Sliced Design
   Diaspora.Core/                 # small, stable cross-cutting kernel shared by modules
   Diaspora.Contracts/            # DTOs/events shared across module (later, service) boundaries
-  Diaspora.Tests/                # xUnit tests (see .claude/rules/testing.md)
+  Diaspora.Tests/                # xUnit tests spanning Client.Api / multiple modules (see .claude/rules/testing.md)
   Modules/
     Identity/                      # reference example — mirror this layout for new modules
       Identity.Domain/               # entities, value objects — no framework dependencies
       Identity.Application/          # use cases (CQRS commands/queries via MediatR), abstractions
-      Identity.Infrastructure/        # EF Core DbContext, implements Application's abstractions
+      Identity.Infrastructure/        # EF Core DbContext (schema "identity"), repositories, Unit of Work
+      Identity.Tests/                 # xUnit tests for this module's three layers (see .claude/rules/testing.md)
 infrastructure/
   docker/
     docker-compose.yml         # local Postgres + pgAdmin

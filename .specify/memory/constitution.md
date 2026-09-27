@@ -1,5 +1,18 @@
 <!--
 Sync Impact Report
+- Version change: 1.2.0 → 1.3.0
+- Modified principles:
+  - V. Quality by Default — clarified that, for this learning project, test coverage should be
+    proportionate and representative rather than exhaustive, given the real token cost of agents
+    writing and running tests; this bounds case count, not whether a change needs tests
+- Added sections: none
+- Removed sections: none
+- Deferred placeholders: none
+- Templates requiring follow-up: none checked in this run (constitution-only change per
+  command scope guard); re-validate plan/spec/tasks templates against these principles the next
+  time they are touched.
+
+Sync Impact Report (previous amendment)
 - Version change: 1.1.0 → 1.2.0
 - Modified principles:
   - VI. Specification-Driven Development — specifications and plans MUST also be consistent with
@@ -84,10 +97,21 @@ Every change that alters behavior MUST include automated tests appropriate to it
 complexity, and MUST pass all existing automated validation (tests, linting, type-checking,
 build) before it is considered done. Tests SHOULD exercise real dependencies (e.g., via
 containerized services) wherever practical; mocking SHOULD be reserved for true external
-boundaries that cannot reasonably run locally.
+boundaries that cannot reasonably run locally, or for a module's own `Application`-layer
+abstractions when unit-testing a handler in isolation from its `Infrastructure` implementation
+(see [testing.md](../../.claude/rules/testing.md)).
+
+Because this project is built and tested largely through AI agents, and agent token usage is a
+real, finite cost rather than a free resource, the number of test cases MUST be proportionate and
+representative rather than exhaustive: covering each relevant risk category (e.g., a domain rule,
+a handler's happy path and its main failure mode, a persistence round-trip) with a small number of
+cases is preferred over enumerating every input combination. This bounds how many cases a given
+piece of test coverage needs, not whether a change needs tests at all.
 
 **Rationale**: Automated validation is both a safety net for a project maintained by a single
-person over a long time and a core engineering skill this project exists to practice.
+person over a long time and a core engineering skill this project exists to practice. Scoping
+case count to what is representative keeps that safety net affordable in agent tokens without
+abandoning it.
 
 ### VI. Specification-Driven Development
 Every non-trivial feature MUST have a specification that serves as the source of truth for its
@@ -163,4 +187,4 @@ Repeated or persistent violation of a principle MUST be resolved either by bring
 into compliance or by amending this constitution to reflect a deliberate, documented change in
 practice — not by silent drift.
 
-**Version**: 1.2.0 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-09-11
+**Version**: 1.3.0 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-09-27
