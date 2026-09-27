@@ -1,4 +1,5 @@
 using Diaspora.Identity.Application.Common.Abstractions;
+using Diaspora.Identity.Domain.RefreshTokens;
 using Diaspora.Identity.Domain.Users;
 using MediatR;
 
@@ -6,8 +7,11 @@ namespace Diaspora.Identity.Application.Authentication.Login;
 
 public class LoginCommandHandler(
     IUserRepository userRepository,
+    IRefreshTokenRepository refreshTokenRepository,
+    IUnitOfWork unitOfWork,
     IPasswordHasher passwordHasher,
-    IJwtTokenService jwtTokenService) : IRequestHandler<LoginCommand, LoginResult>
+    IJwtTokenService jwtTokenService,
+    IRefreshTokenService refreshTokenService) : IRequestHandler<LoginCommand, LoginResult>
 {
     // Used to verify a password against when no account exists, so a response doesn't leak
     // via timing whether the email is registered (FR-011: never reveal which part was wrong).
@@ -32,7 +36,20 @@ public class LoginCommandHandler(
             return LoginResult.InvalidCredentials();
         }
 
+        var issuedRefreshToken = refreshTokenService.Issue();
+        refreshTokenRepository.AddRefreshToken(
+            RefreshToken.Issue(user.Id, issuedRefreshToken.TokenHash, DateTime.UtcNow, issuedRefreshToken.ExpiresAtUtc));
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
         var issuedToken = jwtTokenService.IssueAccessToken(user);
-        return LoginResult.Success(user.Id, user.Email, user.FirstName, user.LastName, issuedToken.AccessToken, issuedToken.ExpiresAtUtc);
+        return LoginResult.Success(
+            user.Id,
+            user.Email,
+            user.FirstName,
+            user.LastName,
+            issuedToken.AccessToken,
+            issuedToken.ExpiresAtUtc,
+            issuedRefreshToken.RawToken,
+            issuedRefreshToken.ExpiresAtUtc);
     }
 }

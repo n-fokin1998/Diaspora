@@ -33,13 +33,16 @@ namespace Diaspora.Identity.Infrastructure
                     Audience = config["Jwt:Audience"]
                         ?? throw new InvalidOperationException("Missing required configuration: Jwt:Audience."),
                     AccessTokenMinutes = int.TryParse(config["Jwt:AccessTokenMinutes"], out var minutes) ? minutes : 60,
+                    RefreshTokenDays = int.TryParse(config["Jwt:RefreshTokenDays"], out var days) ? days : 14,
                 };
             });
 
             services.AddScoped<IPasswordHasher, PasswordHasher>();
             services.AddScoped<IJwtTokenService, JwtTokenService>();
+            services.AddScoped<IRefreshTokenService, RefreshTokenService>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+            services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
             return services;
         }

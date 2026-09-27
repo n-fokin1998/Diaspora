@@ -19,7 +19,7 @@ From `src/Modules/Identity/Identity.Infrastructure`:
 dotnet ef database update --project src/Modules/Identity/Identity.Infrastructure --startup-project src/Client.Api
 ```
 
-Creates the `users` table described in [data-model.md](data-model.md).
+Creates the `users` and `refresh_tokens` tables described in [data-model.md](data-model.md).
 
 ## 3. Run the backend
 
@@ -64,6 +64,23 @@ Open the SPA (default `http://localhost:5173`) and confirm:
 7. **Field-level feedback (User Story 3)**: On the registration form, try a malformed email, a
    too-short password, an empty first/last name, and a future date of birth, one at a time —
    confirm each produces a specific, field-relevant message rather than a generic failure.
+8. **Session persists across refresh** (new, 2026-09-22 scope addition — spec.md SC-006): While
+   authenticated on the Home screen, refresh the browser tab (F5). Confirm you remain
+   authenticated with no visible re-login step. Open your browser's DevTools → Application →
+   Cookies for `http://localhost:5220` and confirm a `refreshToken` cookie is present with
+   `HttpOnly` checked and no value visible to a `document.cookie` read from the DevTools console.
+9. **Refresh token rotates**: Note the `refreshToken` cookie's value, then trigger a refresh
+   (reload the page, or wait for the SPA's silent refresh). Confirm the cookie's value has
+   changed — the old value is no longer accepted (see step 10).
+10. **Logout revokes the session server-side** (spec.md FR-016): Log out, then attempt to call
+    `POST /api/auth/refresh` directly with the refresh-token cookie captured before logout (e.g.
+    via `curl -b cookies.txt ...` using a cookie jar saved before logging out). Confirm it now
+    returns `401 Unauthorized` — the server, not just the SPA, has ended the session.
+11. **Reused refresh token is rejected** (spec.md FR-015): Save two copies of the refresh-token
+    cookie before and after a rotation (step 9). Present the older, already-rotated value to
+    `POST /api/auth/refresh`. Confirm it returns `401 Unauthorized`, and that the newer
+    (legitimately current) refresh token is now also rejected — reuse of a superseded token
+    revokes the whole session, not just the reused token.
 
 ## 6. Automated checks
 

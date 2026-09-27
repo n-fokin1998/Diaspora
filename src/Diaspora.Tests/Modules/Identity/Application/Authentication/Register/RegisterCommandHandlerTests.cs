@@ -1,5 +1,6 @@
 using Diaspora.Identity.Application.Authentication.Register;
 using Diaspora.Identity.Application.Common.Abstractions;
+using Diaspora.Identity.Domain.RefreshTokens;
 using Diaspora.Identity.Domain.Users;
 using Moq;
 
@@ -8,10 +9,13 @@ namespace Diaspora.Tests.Modules.Identity.Application.Authentication.Register;
 public class RegisterCommandHandlerTests
 {
     private readonly List<User> _users = [];
+    private readonly List<RefreshToken> _refreshTokens = [];
     private readonly Mock<IUserRepository> _userRepository = new();
+    private readonly Mock<IRefreshTokenRepository> _refreshTokenRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IPasswordHasher> _passwordHasher = new();
     private readonly Mock<IJwtTokenService> _jwtTokenService = new();
+    private readonly Mock<IRefreshTokenService> _refreshTokenService = new();
     private readonly RegisterCommandHandler _sut;
 
     public RegisterCommandHandlerTests()
@@ -24,6 +28,10 @@ public class RegisterCommandHandlerTests
             .Setup(r => r.AddUser(It.IsAny<User>()))
             .Callback<User>(user => _users.Add(user));
 
+        _refreshTokenRepository
+            .Setup(r => r.AddRefreshToken(It.IsAny<RefreshToken>()))
+            .Callback<RefreshToken>(token => _refreshTokens.Add(token));
+
         _passwordHasher
             .Setup(h => h.Hash(It.IsAny<string>()))
             .Returns(new HashedPassword([1, 2, 3], [4, 5, 6], 210_000));
@@ -32,8 +40,13 @@ public class RegisterCommandHandlerTests
             .Setup(s => s.IssueAccessToken(It.IsAny<User>()))
             .Returns(new IssuedToken("fake-token", DateTime.UtcNow.AddHours(1)));
 
+        _refreshTokenService
+            .Setup(s => s.Issue())
+            .Returns(new IssuedRefreshToken("fake-refresh-token", "fake-refresh-token-hash", DateTime.UtcNow.AddDays(14)));
+
         _sut = new RegisterCommandHandler(
-            _userRepository.Object, _unitOfWork.Object, _passwordHasher.Object, _jwtTokenService.Object);
+            _userRepository.Object, _refreshTokenRepository.Object, _unitOfWork.Object,
+            _passwordHasher.Object, _jwtTokenService.Object, _refreshTokenService.Object);
     }
 
     [Fact]
@@ -46,6 +59,17 @@ public class RegisterCommandHandlerTests
         Assert.False(string.IsNullOrEmpty(result.AccessToken));
         Assert.Single(_users);
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WithValidInput_AlsoIssuesAndPersistsARefreshToken()
+    {
+        var result = await _sut.Handle(ValidCommand(), CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.False(string.IsNullOrEmpty(result.RefreshToken));
+        Assert.Single(_refreshTokens);
+        Assert.Equal(result.UserId, _refreshTokens[0].UserId);
     }
 
     [Fact]

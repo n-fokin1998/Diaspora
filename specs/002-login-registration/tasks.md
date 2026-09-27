@@ -78,6 +78,31 @@ frontend session/routing scaffolding that every user story below depends on.
 everything added so far, the SPA builds, and navigating directly to `/home` unauthenticated
 redirects to `/login`. User story implementation can now begin.
 
+### Refresh-token infrastructure (added 2026-09-22 — research.md #8-#11, data-model.md `RefreshToken`)
+
+**Purpose**: Shared infrastructure for persisting the session across a page refresh (spec.md
+FR-012/FR-015/FR-016), needed before either Register (US1) or Login (US2) can be extended to
+issue a refresh token, or the new Refresh/Logout endpoints can exist.
+
+- [X] T055 [P] Implement the `RefreshToken` entity (`Id`, `UserId`, `TokenHash`, `CreatedAtUtc`, `ExpiresAtUtc`, `RevokedAtUtc`, `ReplacedByTokenHash`, computed `IsActive`) with a static `Issue(userId, tokenHash, createdAtUtc, expiresAtUtc)` factory and a `Revoke(revokedAtUtc, replacedByTokenHash = null)` method per data-model.md, in `src/Modules/Identity/Identity.Domain/RefreshTokens/RefreshToken.cs`
+- [X] T056 [P] Unit tests for `RefreshToken` (`Issue` produces an active token; `Revoke` without a replacement marks it inactive; `Revoke` with a replacement sets `ReplacedByTokenHash`; `IsActive` is false once `ExpiresAtUtc` has passed) in `src/Diaspora.Tests/Modules/Identity/Domain/RefreshTokens/RefreshTokenTests.cs` (depends on T055)
+- [X] T057 [P] Add `RefreshTokenDays` (default 14) to `JwtOptions` in `src/Modules/Identity/Identity.Infrastructure/Authentication/JwtOptions.cs`, and add `Jwt:RefreshTokenDays` to `src/Client.Api/appsettings.Development.json`
+- [X] T058 [P] Define `IRefreshTokenService` (`Issue()` → a raw token + its hash + expiry; `Hash(rawToken)` for looking up a presented token) in `src/Modules/Identity/Identity.Application/Common/Abstractions/IRefreshTokenService.cs`
+- [X] T059 [P] Define `IRefreshTokenRepository` (`FindByTokenHashAsync`, `AddRefreshToken`, `RevokeAllActiveForUserAsync`) in `src/Modules/Identity/Identity.Application/Common/Abstractions/IRefreshTokenRepository.cs`
+- [X] T060 Implement `RefreshTokenService`: a 256-bit `RandomNumberGenerator` token, base64url-encoded for the cookie, hashed with SHA-256 for storage, expiry from `JwtOptions.RefreshTokenDays`, per research.md #9, in `src/Modules/Identity/Identity.Infrastructure/Authentication/RefreshTokenService.cs` (depends on T057, T058)
+- [X] T061 [P] Unit tests for `RefreshTokenService` (issued raw tokens are unique/high-entropy; `Hash` is deterministic for the same input; issued expiry matches `RefreshTokenDays`) in `src/Diaspora.Tests/Modules/Identity/Infrastructure/Authentication/RefreshTokenServiceTests.cs` (depends on T060)
+- [X] T062 Add a `RefreshTokens` `DbSet<RefreshToken>` to `IdentityDbContext` in `src/Modules/Identity/Identity.Infrastructure/Persistence/IdentityDbContext.cs` (depends on T055)
+- [X] T063 [P] Add `RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>` (snake_case `refresh_tokens` table, foreign key to `users`, index on `token_hash`) per efcore-postgresql.md, in `src/Modules/Identity/Identity.Infrastructure/Persistence/Configurations/RefreshTokenConfiguration.cs`
+- [X] T064 Implement `RefreshTokenRepository : IRefreshTokenRepository` in `src/Modules/Identity/Identity.Infrastructure/Persistence/Repositories/RefreshTokenRepository.cs` (depends on T059, T062)
+- [X] T065 Generate the `AddRefreshTokens` EF Core migration for the `refresh_tokens` table in `src/Modules/Identity/Identity.Infrastructure/Persistence/Migrations` (depends on T062, T063)
+- [X] T066 [P] Testcontainers-backed integration test: a `RefreshToken` persists and round-trips through `IdentityDbContext`, and a rotated token can be found by hash with `ReplacedByTokenHash` set, in `src/Diaspora.Tests/Modules/Identity/Infrastructure/Persistence/RefreshTokenRepositoryTests.cs` (depends on T065)
+- [X] T067 Register `IRefreshTokenService` → `RefreshTokenService` and `IRefreshTokenRepository` → `RefreshTokenRepository`, and bind `Jwt:RefreshTokenDays` into the existing `JwtOptions` binding, in `src/Modules/Identity/Identity.Infrastructure/DependencyInjection.cs` (depends on T060, T064)
+- [X] T068 Add `.AllowCredentials()` to the `"Spa"` CORS policy in `src/Client.Api/Program.cs` per research.md #10
+- [X] T069 [P] Set `withCredentials: true` on the shared axios client in `src/Client.Api/spa/src/shared/api/` per research.md #10
+
+**Checkpoint**: Refresh-token infrastructure is in place — Register/Login can now be extended to
+issue one, and the new Refresh/Logout endpoints can be built on top of it.
+
 ---
 
 ## Phase 3: User Story 1 - Register for a new account (Priority: P1) 🎯 MVP
@@ -111,6 +136,15 @@ and the SPA lands on `/home`.
 **Checkpoint**: User Story 1 is fully functional and independently testable — a new visitor can
 register and reach an authenticated Home screen.
 
+### Refresh-token extension for User Story 1 (added 2026-09-22 — spec.md FR-012)
+
+- [X] T070 [US1] Extend `RegisterCommand`/`RegisterResult` to carry a raw refresh token + its expiry, and extend `RegisterCommandHandler` to also issue and persist a `RefreshToken` via `IRefreshTokenService`/`IRefreshTokenRepository` alongside the access token, in `src/Modules/Identity/Identity.Application/Authentication/Register/` (depends on T060, T064)
+- [X] T071 [US1] Update `RegisterController` to set the `refreshToken` cookie (`HttpOnly`/`Secure`/`SameSite=Strict`/`Path=/api/auth`) on `201 Created` per contracts/auth-api.md, in `src/Client.Api/Controllers/Auth/RegisterController.cs` (depends on T070, T068)
+- [X] T072 [P] [US1] Extend the registration endpoint tests to assert the `refreshToken` cookie is set with the expected attributes on success, in `src/Diaspora.Tests/Client.Api/Controllers/Auth/RegisterControllerTests.cs` (depends on T071)
+
+**Checkpoint**: Registering now also starts a session that survives a page refresh, not just an
+in-memory-only one.
+
 ---
 
 ## Phase 4: User Story 2 - Log in to an existing account (Priority: P2)
@@ -142,6 +176,40 @@ with one generic message.
 
 **Checkpoint**: User Stories 1 and 2 both work independently — register-then-use and
 login-then-use are both complete, end-to-end flows.
+
+### Session persistence across refresh (added 2026-09-22 — spec.md User Story 2 acceptance scenarios 4/5, FR-012, FR-015, FR-016; research.md #9-#11)
+
+**Goal**: A logged-in user (via register or login) stays authenticated across a page refresh or
+browser restart until the refresh token expires (14 days of inactivity) or they explicitly log
+out; a reused, already-rotated refresh token ends all of that user's sessions; logout is now a
+server-side revocation.
+
+**Independent Test**: Log in, refresh the browser tab, and confirm the user is still on `/home`
+authenticated with no re-login. Log out, then attempt `POST /api/auth/refresh` with the
+now-revoked cookie and confirm `401`. Capture two successive refresh-token cookie values (before
+and after one rotation) and confirm presenting the older one is rejected and also revokes the
+newer one (quickstart.md §5 steps 8-11).
+
+- [X] T073 [US2] Extend `LoginCommand`/`LoginResult` and `LoginCommandHandler` to also issue and persist a refresh token, mirroring T070, in `src/Modules/Identity/Identity.Application/Authentication/Login/` (depends on T060, T064)
+- [X] T074 [US2] Update `LoginController` to set the `refreshToken` cookie on `200 OK`, mirroring T071, in `src/Client.Api/Controllers/Auth/LoginController.cs` (depends on T073, T068)
+- [X] T075 [P] [US2] Extend the login endpoint tests to assert the `refreshToken` cookie is set on success, in `src/Diaspora.Tests/Client.Api/Controllers/Auth/LoginControllerTests.cs` (depends on T074)
+- [X] T076 [P] [US2] Implement `RefreshCommand`/`RefreshResult` (input: the raw refresh token from the cookie; output: a new access token + new refresh token + user summary, or a failure) in `src/Modules/Identity/Identity.Application/Authentication/Refresh/`
+- [X] T077 [US2] Implement `RefreshCommandHandler`: hash the presented token and look it up; unknown or expired → fail; already revoked (reuse) → revoke every other active token for that user (FR-015) and fail; otherwise rotate — issue+persist a new `RefreshToken`, revoke the presented one with `ReplacedByTokenHash` set — and issue a new access token, per research.md #9, in `src/Modules/Identity/Identity.Application/Authentication/Refresh/RefreshCommandHandler.cs` (depends on T076, T060, T064)
+- [X] T078 [P] [US2] Unit tests for `RefreshCommandHandler` covering: an active token rotates successfully; an unknown/expired token fails; a reused (already-revoked) token fails and revokes every other active token for that user, in `src/Diaspora.Tests/Modules/Identity/Application/Authentication/Refresh/RefreshCommandHandlerTests.cs` (depends on T077)
+- [X] T079 [US2] Implement `RefreshController` (`POST /api/auth/refresh`, `[AllowAnonymous]`, no request body — reads `Request.Cookies["refreshToken"]`): dispatch via MediatR, map success to `200 OK` + `AuthResponse` + a rotated cookie, map failure to `401` + a cleared cookie, per contracts/auth-api.md, in `src/Client.Api/Controllers/Auth/RefreshController.cs` (depends on T077)
+- [X] T080 [P] [US2] Endpoint tests for `POST /api/auth/refresh` covering the `200`/`401` responses and cookie rotation/clearing, in `src/Diaspora.Tests/Client.Api/Controllers/Auth/RefreshControllerTests.cs` (depends on T079)
+- [X] T081 [P] [US2] Implement `LogoutCommand`/`LogoutResult` (input: the raw refresh token from the cookie; always succeeds) in `src/Modules/Identity/Identity.Application/Authentication/Logout/`
+- [X] T082 [US2] Implement `LogoutCommandHandler`: if the presented token hashes to a known row, revoke it; a missing/unknown/already-revoked token is a no-op, not an error (FR-016), in `src/Modules/Identity/Identity.Application/Authentication/Logout/LogoutCommandHandler.cs` (depends on T081, T064)
+- [X] T083 [US2] Implement `LogoutController` (`POST /api/auth/logout`, `[AllowAnonymous]`): dispatch via MediatR, clear the `refreshToken` cookie, always return `204 No Content` per contracts/auth-api.md, in `src/Client.Api/Controllers/Auth/LogoutController.cs` (depends on T082)
+- [X] T084 [P] [US2] Endpoint tests for `POST /api/auth/logout` covering idempotent `204` with and without a valid cookie, and that a subsequent `POST /api/auth/refresh` using the now-revoked cookie fails, in `src/Diaspora.Tests/Client.Api/Controllers/Auth/LogoutControllerTests.cs` (depends on T083, T079)
+- [X] T085 [US2] Add a `status: 'resolving' | 'authenticated' | 'anonymous'` field to the session store, plus a mount-time effect that calls `POST /api/auth/refresh` (credentials included) and resolves into `authenticated`/`anonymous` before anything auth-dependent renders, in `src/Client.Api/spa/src/entities/session/` (depends on T069, T079)
+- [X] T086 [US2] Update `RequireAuth` to render a brief loading state while `status === 'resolving'` instead of redirecting immediately, in `src/Client.Api/spa/src/app/` (depends on T085)
+- [X] T087 [US2] Add an axios response interceptor that, on a `401` from an authenticated call, attempts one silent `POST /api/auth/refresh` and retries the original request before surfacing the failure, in `src/Client.Api/spa/src/shared/api/` (depends on T069, T079)
+- [X] T088 [US2] Update the Home page's logout control to call `POST /api/auth/logout` before clearing the session store and navigating to `/login`, in `src/Client.Api/spa/src/pages/home/` (depends on T083)
+- [X] T089 [P] [US2] Frontend tests: reloading while authenticated keeps the user on `/home` (mocking a successful silent refresh); an expired/absent refresh-token cookie on mount redirects to `/login`; logging out calls `POST /api/auth/logout` before clearing state, in `src/Client.Api/spa/src/entities/session/session.test.tsx` (depends on T085, T086, T088)
+
+**Checkpoint**: User Story 2 now also covers session persistence across a page refresh and
+server-side logout, satisfying spec.md's updated acceptance scenarios 4/5 and FR-015/FR-016.
 
 ---
 
@@ -178,6 +246,9 @@ specific, actionable feedback on every invalid input.
 - [X] T052 [P] Run `npm run lint` in `src/Client.Api/spa` and resolve any warnings in the files this feature touched
 - [X] T053 Run `dotnet test src/Diaspora.sln` and `npm run test` in `src/Client.Api/spa`, and confirm the full suite passes
 - [X] T054 Walk through every scenario in quickstart.md §5 against the running app (`dotnet run --project src/Client.Api` + `npm run dev`) and confirm each spec.md acceptance scenario holds
+- [X] T090 [P] Re-run `dotnet format src/Diaspora.sln` and `npm run lint` (in `src/Client.Api/spa`) and resolve any new warnings from the refresh-token work
+- [X] T091 Re-run `dotnet test src/Diaspora.sln` and `npm run test` (in `src/Client.Api/spa`) and confirm the full suite, including the new refresh-token tests, passes
+- [X] T092 Walk through quickstart.md §5 steps 8-11 (session persists across refresh, refresh-token rotation, server-side logout revocation, reused-token rejection) against the running app and confirm spec.md SC-006, FR-015, and FR-016 all hold
 
 ---
 
@@ -186,14 +257,21 @@ specific, actionable feedback on every invalid input.
 ### Phase Dependencies
 
 - **Setup (Phase 1)**: No dependencies — start immediately.
-- **Foundational (Phase 2)**: Depends on Setup — BLOCKS all user stories.
-- **User Story 1 (Phase 3)**: Depends only on Foundational.
+- **Foundational (Phase 2)**: Depends on Setup — BLOCKS all user stories. Its refresh-token
+  infrastructure subsection (T055-T069, added 2026-09-22) BLOCKS the refresh-token extensions in
+  Phase 3 and Phase 4 below, but not the original T026-T047 tasks, which do not depend on it.
+- **User Story 1 (Phase 3)**: Depends only on Foundational. Its refresh-token extension
+  (T070-T072) additionally depends on the refresh-token infrastructure subsection of Phase 2.
 - **User Story 2 (Phase 4)**: Depends only on Foundational (independently testable given a seeded
-  account; does not require User Story 1's code, only that some account exists).
+  account; does not require User Story 1's code, only that some account exists). Its session-
+  persistence subsection (T073-T089) additionally depends on the refresh-token infrastructure
+  subsection of Phase 2, and T085-T089 (frontend rehydration) depend on T079 (`RefreshController`)
+  existing.
 - **User Story 3 (Phase 5)**: Depends on Foundational, and touches files User Story 1 (and
   optionally User Story 2) already created — implement after Phase 3 (and ideally Phase 4) for a
   clean diff, even though its own validation logic is additive/refactoring in nature.
-- **Polish (Phase 6)**: Depends on every user story phase you choose to complete.
+- **Polish (Phase 6)**: Depends on every user story phase you choose to complete, including the
+  refresh-token extensions if you complete them.
 
 ### Within Each User Story
 
@@ -211,6 +289,13 @@ specific, actionable feedback on every invalid input.
   from T032, which US1 creates and US2 only reads).
 - Within User Story 1: T026, T027, T028 run in parallel; within User Story 2: T037, T038, T039
   run in parallel.
+- Within the refresh-token infrastructure subsection of Phase 2: T055, T057, T058, T059 can start
+  together; T061 and T066 run in parallel with each other once their respective dependencies
+  (T060; T065) land; T069 is independent of the backend tasks in that subsection.
+- T072 (US1) and T075 (US2) are independent of each other. Within US2's session-persistence
+  subsection, T076/T081 (the two new command/result shapes) can start together, and T078/T080/
+  T084/T089 each run in parallel with the other `[P]`-marked test tasks once their own
+  implementation dependency is met.
 
 ---
 
@@ -241,7 +326,10 @@ Task: "Frontend tests for the registration form in src/Client.Api/spa/src/featur
 2. User Story 1 (Register) → validate independently → demo (MVP).
 3. User Story 2 (Login/Logout) → validate independently → demo.
 4. User Story 3 (Field-specific validation feedback) → validate independently → demo.
-5. Polish → run the full quickstart.md walkthrough once more end-to-end.
+5. Refresh-token infrastructure (Phase 2 addition, T055-T069) → User Story 1's refresh-token
+   extension (T070-T072) → User Story 2's session-persistence subsection (T073-T089) → validate
+   independently (quickstart.md §5 steps 8-11) → demo.
+6. Polish → run the full quickstart.md walkthrough once more end-to-end, including steps 8-11.
 
 ## Notes
 

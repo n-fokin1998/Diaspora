@@ -9,6 +9,11 @@ vi.mock('./api', () => ({
   registerUser: vi.fn(),
 }))
 
+vi.mock('../../entities/session/api', () => ({
+  refreshSession: vi.fn().mockResolvedValue(null),
+  logoutSession: vi.fn().mockResolvedValue(undefined),
+}))
+
 function renderRegisterForm() {
   render(
     <SessionProvider>

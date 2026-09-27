@@ -17,9 +17,18 @@ public sealed class LoginResult : IValidationFailureResult<LoginResult>
     public string LastName { get; private init; } = string.Empty;
     public string AccessToken { get; private init; } = string.Empty;
     public DateTime ExpiresAtUtc { get; private init; }
+    public string RefreshToken { get; private init; } = string.Empty;
+    public DateTime RefreshTokenExpiresAtUtc { get; private init; }
 
     public static LoginResult Success(
-        Guid userId, string email, string firstName, string lastName, string accessToken, DateTime expiresAtUtc) => new()
+        Guid userId,
+        string email,
+        string firstName,
+        string lastName,
+        string accessToken,
+        DateTime expiresAtUtc,
+        string refreshToken,
+        DateTime refreshTokenExpiresAtUtc) => new()
         {
             Succeeded = true,
             UserId = userId,
@@ -28,6 +37,8 @@ public sealed class LoginResult : IValidationFailureResult<LoginResult>
             LastName = lastName,
             AccessToken = accessToken,
             ExpiresAtUtc = expiresAtUtc,
+            RefreshToken = refreshToken,
+            RefreshTokenExpiresAtUtc = refreshTokenExpiresAtUtc,
         };
 
     public static LoginResult InvalidCredentials() => new()

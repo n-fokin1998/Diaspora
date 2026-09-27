@@ -28,7 +28,7 @@ services:
 
   client-api:
     build:
-      context: ../../src/Client.Api
+      context: ../../src
     container_name: diaspora-client-api
     environment:
       ASPNETCORE_ENVIRONMENT: Development

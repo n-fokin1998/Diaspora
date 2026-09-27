@@ -21,6 +21,20 @@ public class LoginControllerTests(AuthApiFactory factory) : IClassFixture<AuthAp
     }
 
     [Fact]
+    public async Task Login_WithCorrectCredentials_SetsRefreshTokenCookie()
+    {
+        var email = await RegisterAndReturnEmailAsync();
+
+        var response = await _client.PostAsJsonAsync("/api/auth/login", new { email, password = "Str0ngPass1" });
+
+        Assert.True(response.Headers.TryGetValues("Set-Cookie", out var cookies));
+        var cookie = cookies!.Single(c => c.StartsWith("refreshToken=", StringComparison.Ordinal));
+        Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("samesite=strict", cookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Login_WithWrongPassword_Returns401()
     {
         var email = await RegisterAndReturnEmailAsync();

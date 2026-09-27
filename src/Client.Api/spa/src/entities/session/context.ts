@@ -13,10 +13,13 @@ export interface SessionState {
   expiresAtUtc: string
 }
 
+export type SessionStatus = 'resolving' | 'authenticated' | 'anonymous'
+
 export interface SessionContextValue {
   session: SessionState | null
+  status: SessionStatus
   login: (session: SessionState) => void
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 export const SessionContext = createContext<SessionContextValue | undefined>(undefined)

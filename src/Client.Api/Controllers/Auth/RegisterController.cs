@@ -1,4 +1,5 @@
 using Diaspora.Client.Api.Controllers.Auth.ViewModels;
+using Diaspora.Client.Api.Utils;
 using Diaspora.Identity.Application.Authentication.Register;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -47,6 +48,8 @@ namespace Diaspora.Client.Api.Controllers.Auth
 
                 return ValidationProblem(modelState);
             }
+
+            Response.Cookies.Append(RefreshTokenCookie.Name, result.RefreshToken, RefreshTokenCookie.Options(result.RefreshTokenExpiresAtUtc));
 
             var response = new AuthResponse(
                 result.AccessToken,

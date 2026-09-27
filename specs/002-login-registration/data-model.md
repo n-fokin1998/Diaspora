@@ -36,12 +36,49 @@ hash/salt (via the password-hashing abstraction) and passes the result in. `Norm
 a caller-supplied argument — the factory computes it internally from `email` (trimmed,
 upper-invariant) rather than trusting the caller to have normalized it consistently.
 
-**Relationships**: none yet — this feature introduces no other entity that references `User`.
+**Relationships**: One `User` has many `RefreshToken`s (below) — no other entity references
+`User` yet.
 
-## Session (conceptual, not persisted)
+## RefreshToken (`Identity.Domain.RefreshTokens.RefreshToken`)
 
-Per research.md #4/#5, "session" (spec.md's second Key Entity) is not a database row. It is the
-signed JWT itself:
+New in this revision (research.md #8/#9), to satisfy spec.md's persist-across-refresh
+requirement (FR-012, FR-015, FR-016). Owned exclusively by the `Identity` module, same as `User`.
+
+| Field | Type | Notes |
+|---|---|---|
+| `Id` | `Guid` | Primary key, generated on issuance. |
+| `UserId` | `Guid` | Foreign key to `User.Id`. |
+| `TokenHash` | `string` | SHA-256 hash (hex) of the opaque raw token value the client holds in its cookie. The raw value itself is never persisted (research.md #9), mirroring how `PasswordHash` never holds a plain-text password. |
+| `CreatedAtUtc` | `DateTime` (UTC) | Set once, at issuance. |
+| `ExpiresAtUtc` | `DateTime` (UTC) | `CreatedAtUtc` + `Jwt:RefreshTokenDays` (default 14) at the time this specific token was issued. |
+| `RevokedAtUtc` | `DateTime?` (UTC) | Set when this token is rotated away (superseded) or explicitly revoked (logout, or reuse-triggered mass revocation). Null means still active. |
+| `ReplacedByTokenHash` | `string?` | The `TokenHash` of the token that superseded this one via rotation; null until rotated. Forms the rotation chain used for reuse detection. |
+
+**Invariants enforced by the entity itself**:
+- `TokenHash` is never null/empty once set; the entity has no way to hold the raw token value —
+  there is no such property.
+- A token is considered active only when `RevokedAtUtc` is null **and** `ExpiresAtUtc` is in the
+  future (an `IsActive` computed property, not a stored column).
+- Revoking an already-revoked token is a no-op (idempotent), never an error — logout on an
+  already-expired/rotated cookie must still succeed (spec.md's "logout still succeeds
+  idempotently" behavior, research.md #10).
+
+**Construction**: a single static factory, `RefreshToken.Issue(userId, tokenHash, createdAtUtc,
+expiresAtUtc)`. State transitions happen through one method, `Revoke(revokedAtUtc,
+replacedByTokenHash = null)` — called with a `replacedByTokenHash` on rotation (refresh), and
+without one on explicit logout or reuse-triggered mass revocation.
+
+**Relationships**: many `RefreshToken` rows per `User` (`UserId` foreign key); a `User` has no
+navigation property back to its tokens (the Application layer queries `IRefreshTokenRepository`
+directly, consistent with the module not modeling a bidirectional aggregate for this).
+
+## Session (partly conceptual, partly persisted)
+
+Per research.md #3/#8/#9, "session" (spec.md's second Key Entity) is now the pairing of two
+different-lifetime credentials, not a single JWT:
+
+**Access token** (unchanged from the original design — not a database row, conceptual only): the
+signed JWT itself.
 
 | Claim | Meaning |
 |---|---|
@@ -51,8 +88,12 @@ signed JWT itself:
 | `iat` / `nbf` | Issued-at / not-before, both "now" at issuance. |
 | `exp` | 60 minutes after issuance (research.md #3). |
 
-No `Sessions` table exists. "Ending a session" (FR-012) is the client discarding this token
-(research.md #4); there is nothing server-side to update.
+**Refresh token** (new — the `RefreshToken` entity above): the persisted half of the session,
+which is what makes persistence across a page refresh possible. "Ending a session" (FR-012,
+FR-016) is now a server-side action — `POST /api/auth/logout` revokes the presented
+`RefreshToken` row — rather than purely a client-side token discard; the client also discards its
+in-memory access token and the server clears the cookie, but the revoked database row is what
+prevents the credential from being replayed afterward.
 
 ## Validation summary (traces to spec.md Functional Requirements)
 

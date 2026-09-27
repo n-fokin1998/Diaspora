@@ -18,9 +18,18 @@ public sealed class RegisterResult : IValidationFailureResult<RegisterResult>
     public string LastName { get; private init; } = string.Empty;
     public string AccessToken { get; private init; } = string.Empty;
     public DateTime ExpiresAtUtc { get; private init; }
+    public string RefreshToken { get; private init; } = string.Empty;
+    public DateTime RefreshTokenExpiresAtUtc { get; private init; }
 
     public static RegisterResult Success(
-        Guid userId, string email, string firstName, string lastName, string accessToken, DateTime expiresAtUtc) => new()
+        Guid userId,
+        string email,
+        string firstName,
+        string lastName,
+        string accessToken,
+        DateTime expiresAtUtc,
+        string refreshToken,
+        DateTime refreshTokenExpiresAtUtc) => new()
         {
             Succeeded = true,
             UserId = userId,
@@ -29,6 +38,8 @@ public sealed class RegisterResult : IValidationFailureResult<RegisterResult>
             LastName = lastName,
             AccessToken = accessToken,
             ExpiresAtUtc = expiresAtUtc,
+            RefreshToken = refreshToken,
+            RefreshTokenExpiresAtUtc = refreshTokenExpiresAtUtc,
         };
 
     public static RegisterResult ValidationFailed(IReadOnlyDictionary<string, string[]> fieldErrors) => new()

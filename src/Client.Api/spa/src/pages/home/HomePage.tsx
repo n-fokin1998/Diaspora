@@ -5,15 +5,15 @@ function HomePage() {
   const { logout } = useSession()
   const navigate = useNavigate()
 
-  function handleLogout() {
-    logout()
+  async function handleLogout() {
+    await logout()
     navigate('/login')
   }
 
   return (
     <main className="home">
       <h1>Welcome</h1>
-      <button type="button" onClick={handleLogout}>
+      <button type="button" onClick={() => void handleLogout()}>
         Log out
       </button>
     </main>

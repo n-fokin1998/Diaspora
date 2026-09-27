@@ -82,9 +82,15 @@ add key-management complexity with no present benefit, which Simplicity First ar
   security guidelines" for token-based auth (bounded token lifetime limits the damage of a leaked
   token).
 
-## 4. Session/logout semantics for a stateless JWT
+## 4. Session/logout semantics for a stateless JWT (superseded — see #9/#10)
 
-**Decision**: No server-side session store or token blacklist in this iteration. "Login"
+**Status**: Superseded on 2026-09-22. Persisting the session across a page refresh (spec.md's
+scope addition) requires *some* server-side record to survive the refresh, which is exactly what
+this decision's "no server-side session store" ruled out; #9 introduces the `RefreshToken` table
+and #10 makes logout a server-side revocation again. Kept here as the record of what was
+originally decided and why.
+
+**Original decision**: No server-side session store or token blacklist in this iteration. "Login"
 establishes an authenticated state by handing the client a signed, time-bounded JWT; "logout" is
 a client-side action that discards the token and returns the user to an unauthenticated state.
 The 60-minute expiry (Decision 3) bounds how long a token remains usable after logout.
@@ -99,9 +105,15 @@ session) is satisfied by the client no longer holding or sending a usable token.
 - Server-side token/session blacklist keyed by `jti` — rejected for now as premature; the module
   has no persistence need for it yet and it would add a write path with no current consumer.
 
-## 5. Where the JWT lives on the client
+## 5. Where the JWT lives on the client (superseded — see #8)
 
-**Decision**: The access token is kept in memory only (a small React auth store/context in the
+**Status**: Superseded on 2026-09-22 by Decision #8 below. Persisting the session across a page
+refresh became a concrete, explicit requirement (spec.md's 2026-09-22 scope addition), which the
+in-memory-only design below cannot satisfy by construction — a page refresh clears all JS memory.
+Kept here, per the constitution's Principle IX, as the record of what was originally decided and
+why, since #8 needs it as the thing it replaces.
+
+**Original decision**: The access token is kept in memory only (a small React auth store/context in the
 `entities/session` slice), never written to `localStorage`/`sessionStorage`/cookies. A refresh of
 the page clears it, which is acceptable because "remember me"/persistent login is explicitly out
 of scope (spec.md Assumptions). Outbound requests attach it via an `Authorization: Bearer <token>`
@@ -153,3 +165,160 @@ persistence conventions rather than introducing a new pattern for this one modul
 - PostgreSQL `citext` column type — rejected: requires enabling a database extension purely to
   save one normalization step; a plain unique index on a normalized column achieves the same
   constraint with zero new operational surface.
+
+## 8. Hybrid access/refresh token storage on the client (supersedes #5)
+
+**Decision**: The access token keeps living only in memory (React state in `entities/session`),
+exactly as #5 originally decided — that part was never the problem. What's added is a **refresh
+token**, delivered as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to
+`Path=/api/auth`, set by the server on register/login/refresh and cleared by the server on
+logout. On every app load (including a page refresh), the SPA calls `POST /api/auth/refresh`
+with credentials included; the browser attaches the cookie automatically (JavaScript never reads
+or writes it), and the response's fresh access token is placed into memory before any
+authenticated route renders.
+
+**Rationale**: This is the widely-documented "hybrid" pattern for JWTs in a browser SPA — an
+in-memory access token (short-lived, invisible to `localStorage`/`sessionStorage` inspection,
+gone the instant the tab is closed) plus an `httpOnly` refresh token (never readable by page
+JavaScript at all, so an XSS payload cannot exfiltrate the one credential that actually survives
+a refresh) — and is exactly what the user asked for by name. It satisfies the new
+persist-across-refresh requirement (spec.md FR-012) while keeping the access token's exposure
+window at 60 minutes (research.md #3) and confining the only long-lived secret to a location
+script cannot touch.
+
+**Alternatives considered**:
+- Keep #5's in-memory-only design, no refresh mechanism — rejected: cannot satisfy
+  persist-across-refresh at all; a page refresh clears all JS memory by definition.
+- Put the access token itself in an `httpOnly` cookie, sent automatically on every request —
+  rejected: couples a short-lived, frequently-reissued token to cookie semantics and would
+  require CSRF defenses on every single authenticated endpoint, not just the two auth endpoints
+  that actually need a cookie (see #10).
+- Refresh token in `localStorage`/`sessionStorage` — rejected: identical XSS exposure to the
+  anti-pattern #5 already rejected for the access token; defeats the entire point of moving to a
+  hybrid scheme.
+
+## 9. Refresh token format, storage, and rotation
+
+**Decision**: The refresh token is a 256-bit cryptographically random opaque value
+(`RandomNumberGenerator`, base64url-encoded for the cookie) — not a JWT; it carries no claims and
+is meaningless without a database lookup. The server persists only a SHA-256 hash of the value
+(never the raw token) in a new `refresh_tokens` table: `UserId`, `TokenHash`, `CreatedAtUtc`,
+`ExpiresAtUtc`, `RevokedAtUtc` (nullable), `ReplacedByTokenHash` (nullable — the hash of the
+token that superseded this one, for rotation-chain / reuse detection).
+
+Refresh tokens **rotate on every use**: `POST /api/auth/refresh` issues a brand-new refresh
+token, marks the presented one revoked with `ReplacedByTokenHash` pointing at the new one's hash,
+and sets the new token as the cookie. Lifetime: 14 days from each token's own issuance (not a
+single fixed session start — continuous use keeps the session alive indefinitely; 14 days of
+inactivity ends it), configured via a new `Jwt:RefreshTokenDays` setting alongside the existing
+`Jwt:*` keys (research.md #3).
+
+If an **already-revoked** token is presented again — the signature of a stolen, replayed token,
+since the legitimate client would only ever hold the latest one — the handler treats it as
+suspected compromise: it revokes every other active refresh token for that user (per spec.md's
+new FR-015) and returns `401`, forcing re-login everywhere rather than just for that one token.
+
+**Rationale**: Hashing before storage mirrors the password-hashing precedent (research.md #2) —
+a database read does not hand out a directly usable credential. Rotation with reuse detection is
+the standard OAuth2/OWASP-recommended mitigation for refresh-token theft and is proportionate
+complexity here (one extra `RevokedAtUtc` check plus a bulk revoke query), not a general-purpose
+session-management subsystem.
+
+**Alternatives considered**:
+- No rotation (one long-lived refresh token reused until expiry) — rejected: a token stolen once
+  stays valid and undetectable for up to 14 days; rotation turns theft into a detectable event
+  the next time the legitimate client's now-stale copy is also used.
+- Store the raw refresh token value — rejected: same reasoning as storing plaintext passwords; a
+  hash is just as effective for a high-entropy random value and costs nothing extra to verify.
+- A JWT-format refresh token — rejected: a refresh token's only job is "look up its row so it can
+  be revoked/rotated"; a self-describing JWT adds parsing/claims machinery for no benefit over a
+  bare random id (Simplicity First).
+
+## 10. Backend delivery: new use cases, cookie attributes, and CORS
+
+**Decision**: Two new Application use cases, mirroring the existing `Authentication/Register` and
+`Authentication/Login` vertical slices (architecture.md): `Authentication/Refresh` and
+`Authentication/Logout`, dispatched via MediatR, each taking the raw refresh-token cookie value
+as its only input (no request body). `RegisterCommandHandler`/`LoginCommandHandler` are extended
+to also issue and persist a refresh token via two new `Common/Abstractions`:
+`IRefreshTokenService` (generate a raw token + its hash; hash a presented raw token for lookup —
+implemented in `Identity.Infrastructure/Authentication/RefreshTokenService.cs`) and
+`IRefreshTokenRepository` (find-by-hash, add, bulk-revoke-active-for-user — implemented in
+`Identity.Infrastructure/Persistence/Repositories/RefreshTokenRepository.cs`). `RegisterResult`/
+`LoginResult` gain the raw refresh token and its expiry as result fields carried only to the
+controller — never serialized into the JSON `AuthResponse` body (see
+[contracts/auth-api.md](contracts/auth-api.md)); the controller writes it directly to the
+response cookie.
+
+Two new controllers in `Client.Api/Controllers/Auth/`, matching the existing
+one-controller-per-action file convention: `RefreshController` (`POST /api/auth/refresh`,
+`[AllowAnonymous]` — the access token may already be expired when this is called) and
+`LogoutController` (`POST /api/auth/logout`, also `[AllowAnonymous]` — if the cookie is missing
+or already invalid, logout still succeeds idempotently). Both read
+`Request.Cookies["refreshToken"]` and, on success, write it back via
+`Response.Cookies.Append("refreshToken", token, cookieOptions)` (Refresh) or
+`Response.Cookies.Delete("refreshToken", ...)` (Logout).
+
+Cookie options: `HttpOnly = true`, `Secure = true`, `SameSite = SameSiteMode.Strict`,
+`Path = "/api/auth"`, `Expires` set to the refresh token's own `ExpiresAtUtc`. `Secure` needs no
+local-dev exception (unlike the JWT signing secret in research.md #3): Chrome/Firefox treat
+`localhost` as a secure context regardless of scheme, and this repository's
+`Client.Api/Properties/launchSettings.json` already runs the API on plain
+`http://localhost:5220` by default — a `Secure` cookie still gets set and sent there.
+
+`Program.cs`'s existing `"Spa"` CORS policy (`WithOrigins("http://localhost:5173")`) gains
+`.AllowCredentials()` — compatible with a specific-origin policy (ASP.NET Core only forbids
+combining this with `AllowAnyOrigin`, which this policy was never using). The SPA's `axios`
+client must set `withCredentials: true` so the browser attaches the cookie on these two
+cross-origin calls. No new secret is introduced for any of this — the refresh token's security
+comes from its own randomness and hashed storage (#9), not from the shared JWT signing key.
+
+**Rationale**: Reuses every existing pattern in the module (vertical-slice use cases,
+single-purpose abstractions, one-controller-per-action, the `JwtOptions`-style config-binding
+`??`-with-throw pattern, `internal` Infrastructure implementations) rather than inventing a new
+shape for this feature. Scoping the cookie's `Path` to `/api/auth` means it is never attached to
+ordinary API calls (which keep using the unchanged `Authorization: Bearer` header for the access
+token) — only the two endpoints that actually need it ever see it, which is what shrinks the
+CSRF-relevant surface down to those two and lets `SameSite=Strict` fully close it (both origins
+are `localhost`, hence same-site with each other, so `Strict` does not break the legitimate
+same-site flow).
+
+**Alternatives considered**:
+- Session-wide `Path=/` — rejected: needlessly attaches the refresh-token cookie to every API
+  request when only two endpoints ever read it, growing the blast radius of any future endpoint
+  that logs or proxies request cookies/headers.
+- Add double-submit anti-CSRF tokens on top — rejected for now: `SameSite=Strict` plus `Path`
+  scoping already removes the realistic CSRF vector for this same-site topology; revisit only if
+  the SPA and API are ever served from genuinely different sites (per Simplicity First).
+- Return the refresh token in the `AuthResponse` JSON body and let the SPA decide where to store
+  it — rejected: reintroduces the "client decides, client can get it wrong" flexibility that
+  makes JWT-storage mistakes possible in the first place; an `HttpOnly` cookie is inaccessible to
+  JS by server-side construction, not by SPA-code discipline.
+
+## 11. Session persistence and rehydration on the frontend
+
+**Decision**: `entities/session`'s `SessionProvider` gains a mount-time effect that calls the new
+`POST /api/auth/refresh` (via the `shared/api` client, now configured with
+`withCredentials: true`) before rendering anything that depends on auth state. Session state
+gains an explicit `status: 'resolving' | 'authenticated' | 'anonymous'` (replacing today's
+implicit "session is `null` ⇒ anonymous"), so `RequireAuth` can show a brief loading state
+instead of redirecting to `/login` and then bouncing back once the silent refresh resolves. An
+`axios` response interceptor also triggers one silent `/api/auth/refresh` attempt after any other
+authenticated call gets a `401`, before surfacing the failure — so a mid-session access-token
+expiry (up to the existing 60-minute lifetime, research.md #3) doesn't log the user out while
+their refresh token is still valid. Logout calls the new `POST /api/auth/logout` (revoking
+server-side, #10) before clearing in-memory session state and navigating to `/login`.
+
+**Rationale**: This is the concrete client-side mechanism that fulfills "persist logged in
+session between page refresh" — the access token still cannot survive a refresh by design (#5,
+#8), so something has to re-derive it, and the `httpOnly` cookie is exactly what the browser
+preserves and resends automatically. A distinct `resolving` state avoids the flash-of-login-page
+bug that's common to this pattern if "anonymous" and "haven't checked yet" are conflated.
+
+**Alternatives considered**:
+- Rely only on the `401`-triggered interceptor refresh, with no mount-time check — rejected:
+  `RequireAuth` would redirect to `/login` immediately on every page load (before any API call
+  ever fires to trigger the interceptor), defeating the purpose entirely.
+- Poll `/api/auth/refresh` on a timer instead of reacting to an actual `401` — rejected:
+  unnecessary server load and complexity for no benefit over reacting to the real signal
+  (Simplicity First).

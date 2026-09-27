@@ -15,6 +15,13 @@
 - Q: For first/last name, should leading/trailing whitespace be rejected as invalid, or trimmed and accepted? → A: Trimmed and accepted — not treated as invalid.
 - Q: Should a malformed (but non-empty) login email produce a field-specific 400 validation error, or the same generic invalid-credentials response as a wrong password or unknown email? → A: The same generic invalid-credentials response; login does not perform email-format validation before checking credentials.
 
+### Session 2026-09-22 (scope addition)
+
+- The authenticated session established by registration or login MUST now persist across a
+  browser page refresh (and a browser restart, within the session's validity window), instead of
+  being lost on refresh. This is a deliberate, explicit expansion of scope for this feature,
+  superseding the earlier Assumption that "remember me" / persistent login was out of scope.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Register for a new account (Priority: P1)
@@ -65,6 +72,12 @@ authenticated session starts.
    email, **Then** login is rejected with a generic invalid-credentials message.
 3. **Given** an authenticated user, **When** they choose to log out, **Then** their session ends
    and they are treated as unauthenticated on subsequent access.
+4. **Given** an authenticated user, **When** they refresh the browser page (or close and reopen
+   the browser) while their session is still within its validity window, **Then** they remain
+   authenticated without being asked to log in again.
+5. **Given** an authenticated user whose session has not been used for longer than the session's
+   validity window, **When** they return and refresh the page, **Then** they are treated as
+   unauthenticated and must log in again.
 
 ---
 
@@ -110,6 +123,13 @@ birth) one at a time and confirming a specific, field-relevant error is shown ea
   message, not a format-specific error, since login does not validate email format before checking
   credentials.)
 - What happens when an already-authenticated user opens the registration or login page again?
+- What happens when a user's session is stolen or copied (e.g., a leaked credential used to
+  replay a session-continuation request that the legitimate browser has already used once)? The
+  system MUST treat a reused, already-superseded session-continuation credential as a possible
+  compromise and end all of that user's active sessions rather than honoring it.
+- What happens when a user's browser is closed and reopened, or the page is refreshed, after the
+  session's validity window has fully elapsed? The user is treated as unauthenticated, the same
+  as if they had explicitly logged out.
 
 ## Requirements *(mandatory)*
 
@@ -146,8 +166,11 @@ birth) one at a time and confirming a specific, field-relevant error is shown ea
   email and to a correct email with the wrong password — login does not perform email-format
   validation separately from the credential check, so a malformed email is never distinguished from
   a wrong password in the response.
-- **FR-012**: System MUST establish an authenticated session for a user upon successful login, and
-  MUST allow the user to explicitly log out, ending that session.
+- **FR-012**: System MUST establish an authenticated session for a user upon successful login or
+  registration, and MUST allow the user to explicitly log out, ending that session. The session
+  MUST remain valid across a browser page refresh or browser restart for as long as it is within
+  its validity window, without requiring the user to re-enter credentials; once that window has
+  elapsed, the user MUST be treated as unauthenticated.
 - **FR-013**: System MUST present specific, field-level validation error messages on the
   registration and login forms whenever submitted input fails validation, rather than a single
   generic failure message. On the login form this applies to a missing email or password; a
@@ -156,6 +179,13 @@ birth) one at a time and confirming a specific, field-relevant error is shown ea
 - **FR-014**: Registration and login MUST be implemented entirely with the project's own logic,
   without depending on any third-party authentication, identity, or user-management library or
   hosted service.
+- **FR-015**: System MUST NOT honor a session-continuation credential (used to keep a session
+  alive across a page refresh) that has already been superseded by a later one; presenting an
+  already-superseded credential again MUST be treated as a possible compromise and MUST end all
+  of that user's active sessions, requiring the user to log in again everywhere.
+- **FR-016**: System MUST end a user's session server-side when the user explicitly logs out,
+  such that the credential that had been keeping the session alive across page refreshes can no
+  longer be used afterward.
 
 ### Key Entities
 
@@ -163,8 +193,10 @@ birth) one at a time and confirming a specific, field-relevant error is shown ea
   used to log in), securely hashed password, first name, last name, date of birth, location (free
   text), and the time the account was created.
 - **Session**: An authenticated login instance tied to a single user account, created on
-  successful login and ended on logout or expiration; used to recognize the user on subsequent
-  access without asking them to log in again.
+  successful login or registration and ended on logout or expiration; used to recognize the user
+  on subsequent access, including across a page refresh, without asking them to log in again. A
+  session is kept alive by a session-continuation credential that is superseded each time it is
+  used to extend the session, so that reuse of a superseded one is detectable.
 
 ## Success Criteria *(mandatory)*
 
@@ -182,6 +214,9 @@ birth) one at a time and confirming a specific, field-relevant error is shown ea
   readable form.
 - **SC-005**: The registration and login pages remain fully usable and visually coherent at both
   common desktop and mobile screen widths.
+- **SC-006**: A user who refreshes the browser tab, or closes and reopens the browser, while
+  their session is still within its validity window remains authenticated with no visible
+  re-login step.
 
 ## Assumptions
 
@@ -196,8 +231,9 @@ birth) one at a time and confirming a specific, field-relevant error is shown ea
   age bound is enforced.
 - Minimum password strength follows common best-practice guidance: at least 8 characters,
   including a mix of letters and numbers; no forced periodic password rotation is included.
-- "Login" establishes a session-based authenticated state for the browser; "remember me" /
-  long-lived persistent login and password-reset/forgot-password flows are out of scope for this
+- "Login" (and registration) establishes a session-based authenticated state for the browser that
+  persists across a page refresh or browser restart for a bounded validity window (on the order
+  of days, not indefinitely); password-reset/forgot-password flows remain out of scope for this
   feature.
 - No social login/SSO is included; the only way to authenticate is the email/password pair
   created at registration.

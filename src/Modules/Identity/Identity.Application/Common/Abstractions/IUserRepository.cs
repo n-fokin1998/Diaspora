@@ -8,6 +8,8 @@ namespace Diaspora.Identity.Application.Common.Abstractions
 
         Task<User?> FindByNormalizedEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default);
 
+        Task<User?> FindByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
         void AddUser(User user);
     }
 }

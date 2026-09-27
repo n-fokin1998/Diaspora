@@ -19,6 +19,19 @@ public class RegisterControllerTests(AuthApiFactory factory) : IClassFixture<Aut
     }
 
     [Fact]
+    public async Task Register_WithValidPayload_SetsRefreshTokenCookie()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register", ValidPayload($"{Guid.NewGuid()}@example.com"));
+
+        Assert.True(response.Headers.TryGetValues("Set-Cookie", out var cookies));
+        var cookie = cookies!.Single(c => c.StartsWith("refreshToken=", StringComparison.Ordinal));
+        Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("samesite=strict", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("path=/api/auth", cookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Register_WithDuplicateEmail_Returns409()
     {
         var email = $"{Guid.NewGuid()}@example.com";
