@@ -1,6 +1,6 @@
 using Diaspora.Identity.Domain.RefreshTokens;
 
-namespace Diaspora.Tests.Modules.Identity.Domain.RefreshTokens;
+namespace Diaspora.Identity.Tests.Domain.RefreshTokens;
 
 public class RefreshTokenTests
 {

@@ -2,7 +2,7 @@ using Diaspora.Identity.Application.Authentication.Register;
 using Diaspora.Identity.Domain.Users;
 using Identity.Application.Authentication.Register;
 
-namespace Diaspora.Tests.Modules.Identity.Application.Authentication.Register;
+namespace Diaspora.Identity.Tests.Application.Authentication.Register;
 
 public class RegisterCommandValidatorTests
 {

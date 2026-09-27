@@ -1,6 +1,6 @@
 using Diaspora.Identity.Infrastructure.Authentication;
 
-namespace Diaspora.Tests.Modules.Identity.Infrastructure.Authentication;
+namespace Diaspora.Identity.Tests.Infrastructure.Authentication;
 
 public class PasswordHasherTests
 {

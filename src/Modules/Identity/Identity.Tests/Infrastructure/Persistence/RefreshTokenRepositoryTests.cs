@@ -5,7 +5,7 @@ using Diaspora.Identity.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
-namespace Diaspora.Tests.Modules.Identity.Infrastructure.Persistence;
+namespace Diaspora.Identity.Tests.Infrastructure.Persistence;
 
 public class RefreshTokenRepositoryTests : IAsyncLifetime
 {

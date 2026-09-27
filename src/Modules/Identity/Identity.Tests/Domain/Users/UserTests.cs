@@ -1,6 +1,6 @@
 using Diaspora.Identity.Domain.Users;
 
-namespace Diaspora.Tests.Modules.Identity.Domain.Users;
+namespace Diaspora.Identity.Tests.Domain.Users;
 
 public class UserTests
 {

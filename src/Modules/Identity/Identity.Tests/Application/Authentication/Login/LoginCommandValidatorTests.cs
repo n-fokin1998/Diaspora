@@ -1,6 +1,6 @@
 using Diaspora.Identity.Application.Authentication.Login;
 
-namespace Diaspora.Tests.Modules.Identity.Application.Authentication.Login;
+namespace Diaspora.Identity.Tests.Application.Authentication.Login;
 
 public class LoginCommandValidatorTests
 {

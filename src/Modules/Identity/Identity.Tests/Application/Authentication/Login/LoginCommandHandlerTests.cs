@@ -4,7 +4,7 @@ using Diaspora.Identity.Domain.RefreshTokens;
 using Diaspora.Identity.Domain.Users;
 using Moq;
 
-namespace Diaspora.Tests.Modules.Identity.Application.Authentication.Login;
+namespace Diaspora.Identity.Tests.Application.Authentication.Login;
 
 public class LoginCommandHandlerTests
 {

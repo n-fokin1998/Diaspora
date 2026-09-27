@@ -2,7 +2,7 @@ using Diaspora.Identity.Domain.Users;
 using Diaspora.Identity.Infrastructure.Authentication;
 using System.IdentityModel.Tokens.Jwt;
 
-namespace Diaspora.Tests.Modules.Identity.Infrastructure.Authentication;
+namespace Diaspora.Identity.Tests.Infrastructure.Authentication;
 
 public class JwtTokenServiceTests
 {

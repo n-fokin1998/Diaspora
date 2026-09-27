@@ -2,7 +2,7 @@ using Diaspora.Identity.Application.Common.Abstractions;
 using Diaspora.Identity.Application.Common.Behaviors;
 using MediatR;
 
-namespace Diaspora.Tests.Modules.Identity.Application.Common.Behaviors;
+namespace Diaspora.Identity.Tests.Application.Common.Behaviors;
 
 public class ValidationBehaviorTests
 {

@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Identity.Tests" />
     <InternalsVisibleTo Include="Diaspora.Tests" />
   </ItemGroup>
 
